@@ -1,0 +1,42 @@
+@import "./../../variables";
+
+.sidebar {
+  width: 60px;
+  height: 100%;
+  background: $primary-color;
+  color: $secondary-color;
+  padding: 10px;
+  overflow-x: hidden;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  .profile-section {
+    margin-bottom: 20px;
+    
+    .profile-pic {
+      width: 40px;
+      border-radius: 50%;
+    }
+  }
+
+  nav {
+    ul {
+      list-style: none;
+      padding: 0;
+      
+      li {
+        padding: 15px;
+        cursor: pointer;
+        .links{
+          color: $secondary-color;
+          text-decoration: none;
+        }
+
+        &:hover {
+          background: lighten($primary-color, 10%);
+        }
+      }
+    }
+  }
+}

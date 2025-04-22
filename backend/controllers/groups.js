@@ -1,0 +1,164 @@
+const User = require("../models/User");
+const Group = require("../models/Group");
+const Message = require("../models/Message");
+
+const createGroup = async (req, res) => {
+  try {
+    const { name, members, group_description } = req.body;
+    const admin = req.user.userId;
+
+    const group = new Group({
+      name,
+      admin,
+      members: [...members, admin],
+      groupDescription: group_description,
+    });
+
+    await group.save();
+
+    res.status(201).json({ message: "Group created successfully" });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const getGroup = async (req, res) => {
+  try {
+    const group = await Group.findById(req.params.groupId).populate(
+      "members",
+      "username"
+    );
+
+    const messages = await Message.find({ groupId: req.params.groupId })
+      .populate("sender", "username")
+      .sort({ timestamp: 1 });
+
+    if (!group) return res.status(404).json({ message: "Group not found" });
+
+    res.json({ group, messages });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const getGroupList = async (req, res) => {
+  try {
+    const currentUser = req.user.userId;
+    const groups = await Group.find({ members: currentUser }).populate(
+      "members",
+      "username"
+    );
+
+    if (!groups.length)
+      return res.json({ success: true, data: [], message: "No groups found" });
+
+    const groupData = await Promise.all(
+      groups.map(async (group) => {
+        const lastMessage = await Message.findOne({ groupId: group._id })
+          .sort({ timestamp: -1 })
+          .select("text timestamp")
+          .lean();
+
+        return {
+          _id: group._id,
+          name: group.name,
+          image: group.image,
+          members: group.members,
+          lastMessage: lastMessage?.text || "",
+          lastMessageTime: lastMessage?.timestamp || null,
+        };
+      })
+    );
+
+    res.json({ success: true, data: groupData });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+const updateGroup = async (req, res) => {
+  try {
+    const { name, group_description } = req.body;
+    const group = await Group.findById(req.params.groupId);
+
+    if (!group) return res.status(404).json({ message: "Group not found" });
+    if (group.admin.toString() !== req.user.userId)
+      return res.status(403).json({ message: "Not authorized" });
+
+    group.name = name || group.name;
+    group.groupDescription = group_description || group.name;
+    await group.save();
+
+    res.json({ message: "Group updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const deleteGroup = async (req, res) => {
+  try {
+    const group = await Group.findById(req.params.groupId);
+    if (!group) return res.status(404).json({ message: "Group not found" });
+
+    if (group.admin.toString() !== req.user.userId)
+      return res.status(403).json({ message: "Not authorized" });
+
+    await group.deleteOne();
+    res.json({ message: "Group deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const addMember = async (req, res) => {
+  try {
+    const group = await Group.findById(req.params.groupId);
+    if (!group) return res.status(404).json({ message: "Group not found" });
+
+    if (!group.members.includes(req.body.user_id)) {
+      group.members.push(req.body.user_id);
+      await group.save();
+    } else {
+      return res
+        .status(403)
+        .json({ message: "This user is already added in this group" });
+    }
+
+    res.json(group);
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const removeMember = async (req, res) => {
+  try {
+    console.log(req.params.userId);
+
+    const group = await Group.findById(req.params.groupId);
+    if (!group) return res.status(404).json({ message: "Group not found" });
+
+    group.members = group.members.filter(
+      (member) => member?.toString() !== req.params.userId
+    );
+    await group.save();
+
+    res.json({ group, message: "User removed successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = {
+  createGroup,
+  getGroup,
+  updateGroup,
+  deleteGroup,
+  addMember,
+  removeMember,
+  getGroupList,
+};

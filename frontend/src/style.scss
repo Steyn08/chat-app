@@ -1,0 +1,10 @@
+@import "./_variables.scss";
+
+body {
+  font-family: $font-family;
+}
+html,
+body, #root {
+  height: 100%;
+}
+
