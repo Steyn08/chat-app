@@ -25,11 +25,11 @@ const server = http.createServer(app);
 const upload = multer();
 
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
-app.use(upload.none());
 connectDB();
 
 app.use(express.json());
 app.use(cookieParser());
+app.use("/public", express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 
 const io = new Server(server, {

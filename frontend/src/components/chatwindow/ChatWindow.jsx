@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./chatwindow.scss";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPaperclip } from "@fortawesome/free-solid-svg-icons";
-import { faPaperPlane } from "@fortawesome/free-solid-svg-icons";
+import {
+  faPaperclip,
+  faPaperPlane,
+  faDownload,
+} from "@fortawesome/free-solid-svg-icons";
 import GroupList from "../groups/GroupList";
 import PeopleList from "../peoples/PeopleList";
 import { useDispatch, useSelector } from "react-redux";
@@ -10,10 +13,12 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import { setAuth } from "../../slices/authSlice";
 import { useNavigate } from "react-router-dom";
+import "react-image-lightbox/style.css";
+import Lightbox from "react-image-lightbox";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 const ChatWindow = () => {
-  const socket = io("http://localhost:5000");
+  const socket = io(API_BASE_URL);
   const { token } = useSelector((state) => state.auth);
   const user = useSelector((state) => state.profile.user);
 
@@ -23,8 +28,16 @@ const ChatWindow = () => {
   const messagesEndRef = useRef(null);
   const getMessageRef = useRef(null);
   const getFriendsMessageRef = useRef(null);
+  const [attachments, setAttachments] = useState([]);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerImage, setViewerImage] = useState("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const openImage = (imageUrl) => {
+    setViewerImage(imageUrl);
+    setViewerOpen(true);
+  };
   // const [messages, setMessages] = useState([
   //   { id: 1, text: "Hey! How are you?", sender: "other" },
   //   { id: 2, text: "I'm good! How about you?", sender: "own" },
@@ -160,53 +173,52 @@ const ChatWindow = () => {
   }, [messages]);
 
   const sendMessage = async () => {
-    if (newMessage.trim() === "") return;
+    if (!newMessage.trim() && attachments.length === 0) return;
 
     try {
-      const config = {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      };
+      const formData = new FormData();
+      formData.append("sender", user._id);
+      if (selectedChat?.type === "group") {
+        formData.append("groupId", selectedChat.data._id);
+      } else {
+        formData.append("receiver", selectedChat.data._id);
+      }
+      formData.append("text", newMessage);
 
-      const payload = {
-        sender: user._id,
-        text: newMessage,
-        groupId: selectedChat?.type === "group" ? selectedChat.data._id : null,
-        receiver:
-          selectedChat?.type === "person" ? selectedChat.data._id : null,
+      attachments.forEach((file) => {
+        formData.append("attachments", file);
+      });
+
+      const config = {
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
       };
 
       const response = await axios.post(
         `${API_BASE_URL}/messages/send`,
-        payload,
+        formData,
         config
       );
 
       const responseData = response.data;
 
-      if (responseData.success) {
-        if (responseData.data) {
-          const enrichedMessage = {
-            ...response.data.data,
-            sender: selectedChat?.type === "group" ? user : user._id,
-          };
+      if (responseData.success && responseData.data) {
+        console.log("res", responseData.data);
 
-          setMessages((prev) => [...prev, enrichedMessage]);
-          setNewMessage("");
-        }
-      } else {
-        if (responseData.logout) {
-          dispatch(
-            setAuth({
-              login: false,
-              token: null,
-            })
-          );
-          navigate("/sign-in");
-        }
+        const enrichedMessages = responseData.data.map((data) => ({
+          ...data,
+          sender: selectedChat?.type === "group" ? user : user._id,
+        }));
+
+        setMessages((prev) => [...prev, ...enrichedMessages]);
+        setNewMessage("");
+        setAttachments([]);
+      } else if (responseData.logout) {
+        dispatch(setAuth({ login: false, token: null }));
+        navigate("/sign-in");
       }
     } catch (e) {
       console.error("Failed to send message", e);
@@ -288,22 +300,70 @@ const ChatWindow = () => {
                         : "other"
                     }`}
                   >
-                    <div className="w-75 d-flex msg-block">
-                      <span className="message-text badge text-wrap px-3 py-2">
-                        {msg?.text || "test"}
-                      </span>
-                    </div>
+                    {msg.text && (
+                      <div className="w-75 d-flex msg-block">
+                        <span className="message-text badge text-wrap px-3 py-2">
+                          {msg.text}
+                        </span>
+                      </div>
+                    )}
+
+                    {msg.attachments &&
+                      msg.attachments.map((file, idx) => {
+                        const fullUrl = `${API_BASE_URL}/${file}`;
+                        return (
+                          <div key={idx} className="mt-2">
+                            <img
+                              src={fullUrl}
+                              alt="attachment"
+                              style={{ cursor: "pointer" }}
+                              className="img-thumbnail"
+                              onClick={() => openImage(fullUrl)}
+                              width={150}
+                              height={150}
+                            />
+                            <br />
+                            <a
+                              href={fullUrl}
+                              download
+                              className="btn btn-sm btn-outline-secondary mt-1"
+                            >
+                              <FontAwesomeIcon icon={faDownload} color="#000" />
+                            </a>
+                          </div>
+                        );
+                      })}
                   </div>
                 ))}
 
               <div ref={messagesEndRef} />
+              {viewerOpen && (
+                <Lightbox
+                  mainSrc={viewerImage}
+                  onCloseRequest={() => setViewerOpen(false)}
+                />
+              )}
             </div>
 
             <div className="respond-block d-flex align-items-center justify-content-between p-3 gap-2">
               <div className="d-flex justify-content-between align-items-center w-100 gap-2 p-2 rounded message-input-block">
-                <button className="icon-btn">
+                <input
+                  type="file"
+                  multiple
+                  style={{ display: "none" }}
+                  id="fileInput"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    setAttachments(files);
+                  }}
+                />
+                <label
+                  htmlFor="fileInput"
+                  className="icon-btn"
+                  style={{ cursor: "pointer" }}
+                >
                   <FontAwesomeIcon icon={faPaperclip} />
-                </button>
+                </label>
                 <input
                   type="text"
                   className="border-0 w-100"
@@ -313,6 +373,38 @@ const ChatWindow = () => {
                   onKeyPress={(e) => e.key === "Enter" && sendMessage()}
                 />
               </div>
+              {attachments.length > 0 && (
+                <div className="attachments-preview d-flex gap-2 overflow-auto">
+                  {attachments.map((file, index) => (
+                    <div
+                      key={index}
+                      className="attachment-preview position-relative"
+                    >
+                      {file.type.startsWith("image") ? (
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt="preview"
+                          style={{
+                            width: "60px",
+                            height: "60px",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        <div className="file-icon">📄 {file.name}</div>
+                      )}
+                      <button
+                        className="btn-close position-absolute top-0 end-0"
+                        onClick={() =>
+                          setAttachments((prev) =>
+                            prev.filter((_, i) => i !== index)
+                          )
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
               <button
                 className="icon-btn send-btn p-2 rounded"
                 onClick={sendMessage}
@@ -360,30 +452,78 @@ const ChatWindow = () => {
 
             <div className="messages-block p-3">
               {messages.length > 0 &&
-                messages.map((msg) => (
+                messages.map((msg, idx) => (
                   <div
-                    key={msg?._id}
+                    key={idx}
                     className={`message-container ${
                       (msg?.sender?._id || msg?.sender) === user._id
                         ? "own"
                         : "other"
                     }`}
                   >
-                    <div className="w-75 d-flex msg-block">
-                      <span className="message-text badge text-wrap px-3 py-2">
-                        {msg?.text || "test"}
-                      </span>
-                    </div>
+                    {msg.text && (
+                      <div className="w-75 d-flex msg-block">
+                        <span className="message-text badge text-wrap px-3 py-2">
+                          {msg.text}
+                        </span>
+                      </div>
+                    )}
+
+                    {msg.attachments &&
+                      msg.attachments.map((file, idx) => {
+                        const fullUrl = `${API_BASE_URL}/${file}`;
+                        return (
+                          <div key={idx} className="mt-2">
+                            <img
+                              src={fullUrl}
+                              alt="attachment"
+                              style={{ cursor: "pointer" }}
+                              className="img-thumbnail"
+                              onClick={() => openImage(fullUrl)}
+                              width={150}
+                              height={150}
+                            />
+                            <br />
+                            <a
+                              href={fullUrl}
+                              download
+                              className="btn btn-sm btn-outline-secondary mt-1"
+                            >
+                              <FontAwesomeIcon icon={faDownload} color="#000" />
+                            </a>
+                          </div>
+                        );
+                      })}
                   </div>
                 ))}
               <div ref={messagesEndRef} />
+              {viewerOpen && (
+                <Lightbox
+                  mainSrc={viewerImage}
+                  onCloseRequest={() => setViewerOpen(false)}
+                />
+              )}
             </div>
 
             <div className="respond-block d-flex align-items-center justify-content-between p-3 gap-2">
               <div className="d-flex justify-content-between align-items-center w-100 gap-2 p-2 rounded message-input-block">
-                <button className="icon-btn">
+                <input
+                  type="file"
+                  multiple
+                  style={{ display: "none" }}
+                  id="fileInput"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    setAttachments(files);
+                  }}
+                />
+                <label
+                  htmlFor="fileInput"
+                  className="icon-btn"
+                  style={{ cursor: "pointer" }}
+                >
                   <FontAwesomeIcon icon={faPaperclip} />
-                </button>
+                </label>
                 <input
                   type="text"
                   className="border-0 w-100"
@@ -392,6 +532,38 @@ const ChatWindow = () => {
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && sendMessage()}
                 />
+                {attachments.length > 0 && (
+                  <div className="attachments-preview d-flex gap-2 overflow-auto">
+                    {attachments.map((file, index) => (
+                      <div
+                        key={index}
+                        className="attachment-preview position-relative"
+                      >
+                        {file.type.startsWith("image") ? (
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt="preview"
+                            style={{
+                              width: "60px",
+                              height: "60px",
+                              objectFit: "cover",
+                            }}
+                          />
+                        ) : (
+                          <div className="file-icon">📄 {file.name}</div>
+                        )}
+                        <button
+                          className="btn-close position-absolute top-0 end-0"
+                          onClick={() =>
+                            setAttachments((prev) =>
+                              prev.filter((_, i) => i !== index)
+                            )
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <button
                 className="icon-btn send-btn p-2 rounded"
