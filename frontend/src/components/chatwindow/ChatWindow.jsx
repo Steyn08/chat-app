@@ -5,6 +5,12 @@ import {
   faPaperclip,
   faPaperPlane,
   faDownload,
+  faEye,
+  faFilePdf,
+  faFileWord,
+  faFileExcel,
+  faFileImage,
+  faFile,
 } from "@fortawesome/free-solid-svg-icons";
 import GroupList from "../groups/GroupList";
 import PeopleList from "../peoples/PeopleList";
@@ -15,6 +21,9 @@ import { setAuth } from "../../slices/authSlice";
 import { useNavigate } from "react-router-dom";
 import "react-image-lightbox/style.css";
 import Lightbox from "react-image-lightbox";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min.js";
+import FilePreviewCard from "../FilePreviewCard";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 const ChatWindow = () => {
@@ -30,9 +39,11 @@ const ChatWindow = () => {
   const getFriendsMessageRef = useRef(null);
   const [attachments, setAttachments] = useState([]);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [showAttachmentPopup, setShowAttachmentPopup] = useState(false);
   const [viewerImage, setViewerImage] = useState("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [isChatUserOnline, setIsChatUserOnline] = useState(false);
 
   const openImage = (imageUrl) => {
     setViewerImage(imageUrl);
@@ -128,6 +139,27 @@ const ChatWindow = () => {
     }
   };
 
+  const getFileExtension = (url) => {
+    const extension = url.split(".").pop().toLowerCase();
+    return extension;
+  };
+
+  const getFileIcon = (fileUrl) => {
+    const extension = getFileExtension(fileUrl);
+
+    if (extension === "pdf") {
+      return faFilePdf;
+    } else if (extension === "doc" || extension === "docx") {
+      return faFileWord;
+    } else if (extension === "xls" || extension === "xlsx") {
+      return faFileExcel;
+    } else if (["jpg", "jpeg", "png", "gif", "bmp"].includes(extension)) {
+      return faFileImage;
+    } else {
+      return faFile;
+    }
+  };
+
   useEffect(() => {
     if (user?._id) {
       socket.emit("register", user._id);
@@ -149,6 +181,16 @@ const ChatWindow = () => {
       // socket.emit("private-message", selectedChat.data._id);
       fetchFriendsMessages(selectedChat.data._id);
 
+      socket.emit("check-user-online", selectedChat.data._id);
+
+      socket.on("user-online-status", ({ userId, isOnline }) => {
+        console.log("user online");
+
+        if (userId === selectedChat.data._id) {
+          setIsChatUserOnline(isOnline);
+        }
+      });
+
       socket.on(
         `private-message-${user._id}-${selectedChat.data._id}`,
         (data) => {
@@ -161,6 +203,7 @@ const ChatWindow = () => {
     return () => {
       if (selectedChat?.type === "person") {
         socket.off(`private-message-${user._id}-${selectedChat.data._id}`);
+        socket.off("user-online-status");
       }
       if (selectedChat?.type === "group") {
         socket.off(`group-message-${selectedChat.data._id}`);
@@ -232,11 +275,11 @@ const ChatWindow = () => {
   return (
     <div className="d-flex chats-block row w-100 mx-2">
       <div className="col-4 d-flex flex-column justify-content-between chats-list">
-        <input
+        {/* <input
           type="search"
           placeholder="Search..."
           className="w-100 search-field rounded"
-        />
+        /> */}
         <div className="groups-block rounded p-2">
           <h3 className="text-start">Groups</h3>
           <GroupList
@@ -267,7 +310,9 @@ const ChatWindow = () => {
                 />
                 <div className="d-flex mx-1 flex-column justify-content-between">
                   <h6 className="m-0 text-start">{selectedChat?.data?.name}</h6>
-                  <small className="text-start">Online</small>
+                  {/* <small className="text-start">
+                    {isChatUserOnline ? "Online" : ""}
+                  </small> */}
                 </div>
               </div>
               <div className="chat-menu d-flex justify-content-between align-items-center gap-3">
@@ -311,26 +356,40 @@ const ChatWindow = () => {
                     {msg.attachments &&
                       msg.attachments.map((file, idx) => {
                         const fullUrl = `${API_BASE_URL}/${file}`;
-                        return (
-                          <div key={idx} className="mt-2">
+                        const fileExtension = getFileExtension(fullUrl); // returns 'pdf', 'docx', etc.
+                        const fileName = file.split("/").pop();
+
+                        const isImage = [
+                          "jpg",
+                          "jpeg",
+                          "png",
+                          "gif",
+                          "bmp",
+                        ].includes(fileExtension);
+
+                        return isImage ? (
+                          <div key={idx} className="image-preview-wrapper">
                             <img
                               src={fullUrl}
-                              alt="attachment"
-                              style={{ cursor: "pointer" }}
-                              className="img-thumbnail"
+                              alt={fileName}
                               onClick={() => openImage(fullUrl)}
-                              width={150}
-                              height={150}
+                              className="image-thumbnail"
                             />
-                            <br />
                             <a
                               href={fullUrl}
                               download
-                              className="btn btn-sm btn-outline-secondary mt-1"
+                              className="download-button"
                             >
-                              <FontAwesomeIcon icon={faDownload} color="#000" />
+                              <FontAwesomeIcon icon={faDownload} />
                             </a>
                           </div>
+                        ) : (
+                          <FilePreviewCard
+                            key={idx}
+                            fullUrl={fullUrl}
+                            fileName={fileName}
+                            fileExtension={fileExtension}
+                          />
                         );
                       })}
                   </div>
@@ -372,39 +431,24 @@ const ChatWindow = () => {
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && sendMessage()}
                 />
-              </div>
-              {attachments.length > 0 && (
-                <div className="attachments-preview d-flex gap-2 overflow-auto">
-                  {attachments.map((file, index) => (
-                    <div
-                      key={index}
-                      className="attachment-preview position-relative"
-                    >
-                      {file.type.startsWith("image") ? (
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt="preview"
-                          style={{
-                            width: "60px",
-                            height: "60px",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        <div className="file-icon">📄 {file.name}</div>
-                      )}
+                {attachments.length > 0 && (
+                  <div className="attachments-preview-wrapper">
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="badge bg-secondary">
+                        {attachments.length} attachment
+                        {attachments.length > 1 ? "s" : ""}
+                      </span>
                       <button
-                        className="btn-close position-absolute top-0 end-0"
-                        onClick={() =>
-                          setAttachments((prev) =>
-                            prev.filter((_, i) => i !== index)
-                          )
-                        }
-                      />
+                        className="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#attachmentsModal"
+                      >
+                        <FontAwesomeIcon icon={faEye} />
+                      </button>
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
               <button
                 className="icon-btn send-btn p-2 rounded"
                 onClick={sendMessage}
@@ -428,7 +472,9 @@ const ChatWindow = () => {
                 />
                 <div className="d-flex mx-1 flex-column justify-content-between">
                   <h6 className="m-0 text-start">{selectedChat?.data?.name}</h6>
-                  <small className="text-start">Online</small>
+                  <small className="text-start">
+                    {isChatUserOnline ? "Online" : ""}
+                  </small>
                 </div>
               </div>
               <div className="chat-menu d-flex justify-content-between align-items-center gap-3">
@@ -472,26 +518,40 @@ const ChatWindow = () => {
                     {msg.attachments &&
                       msg.attachments.map((file, idx) => {
                         const fullUrl = `${API_BASE_URL}/${file}`;
-                        return (
-                          <div key={idx} className="mt-2">
+                        const fileExtension = getFileExtension(fullUrl); // returns 'pdf', 'docx', etc.
+                        const fileName = file.split("/").pop();
+
+                        const isImage = [
+                          "jpg",
+                          "jpeg",
+                          "png",
+                          "gif",
+                          "bmp",
+                        ].includes(fileExtension);
+
+                        return isImage ? (
+                          <div key={idx} className="image-preview-wrapper">
                             <img
                               src={fullUrl}
-                              alt="attachment"
-                              style={{ cursor: "pointer" }}
-                              className="img-thumbnail"
+                              alt={fileName}
                               onClick={() => openImage(fullUrl)}
-                              width={150}
-                              height={150}
+                              className="image-thumbnail"
                             />
-                            <br />
                             <a
                               href={fullUrl}
                               download
-                              className="btn btn-sm btn-outline-secondary mt-1"
+                              className="download-button"
                             >
-                              <FontAwesomeIcon icon={faDownload} color="#000" />
+                              <FontAwesomeIcon icon={faDownload} />
                             </a>
                           </div>
+                        ) : (
+                          <FilePreviewCard
+                            key={idx}
+                            fullUrl={fullUrl}
+                            fileName={fileName}
+                            fileExtension={fileExtension}
+                          />
                         );
                       })}
                   </div>
@@ -533,35 +593,20 @@ const ChatWindow = () => {
                   onKeyPress={(e) => e.key === "Enter" && sendMessage()}
                 />
                 {attachments.length > 0 && (
-                  <div className="attachments-preview d-flex gap-2 overflow-auto">
-                    {attachments.map((file, index) => (
-                      <div
-                        key={index}
-                        className="attachment-preview position-relative"
+                  <div className="attachments-preview-wrapper">
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="badge bg-secondary">
+                        {attachments.length} attachment
+                        {attachments.length > 1 ? "s" : ""}
+                      </span>
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#attachmentsModal"
                       >
-                        {file.type.startsWith("image") ? (
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt="preview"
-                            style={{
-                              width: "60px",
-                              height: "60px",
-                              objectFit: "cover",
-                            }}
-                          />
-                        ) : (
-                          <div className="file-icon">📄 {file.name}</div>
-                        )}
-                        <button
-                          className="btn-close position-absolute top-0 end-0"
-                          onClick={() =>
-                            setAttachments((prev) =>
-                              prev.filter((_, i) => i !== index)
-                            )
-                          }
-                        />
-                      </div>
-                    ))}
+                        <FontAwesomeIcon icon={faEye} />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -575,6 +620,63 @@ const ChatWindow = () => {
           </div>
         </div>
       )}
+      <div
+        className="modal fade"
+        id="attachmentsModal"
+        tabIndex="-1"
+        aria-labelledby="attachmentsModalLabel"
+        aria-hidden="true"
+      >
+        <div className="modal-dialog modal-dialog-centered modal-lg">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title" id="attachmentsModalLabel">
+                Attached Files ({attachments.length})
+              </h5>
+              <button
+                type="button"
+                className="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div className="modal-body">
+              <div className="d-flex flex-wrap gap-3">
+                {attachments.map((file, index) => (
+                  <div key={index} className="text-center position-relative">
+                    {file.type.startsWith("image") ? (
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt="preview"
+                        style={{
+                          width: "120px",
+                          height: "120px",
+                          objectFit: "cover",
+                        }}
+                        className="rounded border"
+                      />
+                    ) : (
+                      <div className="p-3 border rounded bg-light">
+                        📄 {file.name}
+                      </div>
+                    )}
+
+                    <button
+                      className="btn-close bg-danger rounded-circle position-absolute top-0 end-0"
+                      onClick={() => {
+                        setAttachments((prev) =>
+                          prev.filter((_, i) => i !== index)
+                        );
+                      }}
+                      aria-label="Remove attachment"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

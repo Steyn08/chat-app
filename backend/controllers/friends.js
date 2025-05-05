@@ -6,23 +6,30 @@ const addFriend = async (req, res) => {
     const userId = req.body.user_id;
 
     if (req.user.userId === userId) {
-      return res
-        .status(400)
-        .json({ message: "You cannot add yourself as a friend." });
+      return res.status(400).json({
+        success: false,
+        message: "You cannot add yourself as a friend.",
+      });
     }
     const user = await User.findById(userId).select("-password");
     const currentUser = await User.findById(req.user.userId).select(
       "-password"
     );
+    console.log(user, currentUser);
 
     if (!user || !currentUser) {
-      return res.status(404).json({ message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     if (currentUser.friends.includes(userId)) {
       return res
         .status(400)
-        .json({ message: "User is already in your friends list." });
+        .json({
+          success: false,
+          message: "User is already in your friends list.",
+        });
     }
 
     currentUser.friends.push(user._id);
@@ -31,22 +38,25 @@ const addFriend = async (req, res) => {
     await Promise.all([currentUser.save(), user.save()]);
 
     res.status(200).json({
+      success: true,
       message: "Friend added successfully",
       friends: currentUser.friends,
     });
   } catch (error) {
     console.error("Error adding friend:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
 const searchFriend = async (req, res) => {
   try {
-    // const currentUser = req.user.userId;
+    const currentUser = req.user.userId;
 
     const { query } = req.query;
     if (!query) {
-      return res.status(400).json({ message: "Search query is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Search query is required" });
     }
 
     const users = await User.find({
@@ -59,12 +69,11 @@ const searchFriend = async (req, res) => {
         },
         { _id: { $ne: req.user.userId } },
       ],
-    }).select("profilename email id");
-
-    res.json(users);
+    }).populate("friends", "profilename email id");
+    res.json({ success: true, data: users });
   } catch (error) {
     console.error("Error adding friend:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -120,7 +129,7 @@ const listFriend = async (req, res) => {
           ],
         })
           .sort({ timestamp: -1 })
-          .select("text timestamp")
+          .select("text timestamp attachments")
           .lean();
 
         return {
@@ -128,6 +137,7 @@ const listFriend = async (req, res) => {
           name: friend.profilename,
           email: friend.email,
           lastMessage: lastMessage?.text || "",
+          lastAttachment: lastMessage?.attachments || "",
           lastMessageTime: lastMessage?.timestamp || null,
         };
       })

@@ -17,6 +17,9 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const logoutController = useRef(null);
   const { token } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.profile);
+  console.log("user", user);
+
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -81,9 +84,16 @@ const Sidebar = () => {
       <div>
         <div className="profile-section">
           <img
-            src="/assets/icons/profile.jpg"
+            src={
+              user?.profileImage
+                ? `${API_BASE_URL}/${user?.profileImage}`
+                : "/assets/icons/profile.jpg"
+            }
+            style={{objectFit:"cover"}}
             alt="Profile"
             className="profile-pic"
+            height={50}
+            width={50}
           />
         </div>
         <nav>

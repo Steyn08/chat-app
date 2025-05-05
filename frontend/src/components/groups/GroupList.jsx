@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { setAuth } from "../../slices/authSlice";
 import moment from "moment";
 
+
 const formatDateTime = (isoString) => {
   return moment(isoString).format("dddd, h:mma");
 };
@@ -15,11 +16,13 @@ const GroupList = ({ onSelect }) => {
   const [groups, setGroups] = useState([]);
   const getGroupsRef = useRef(null);
   const { token } = useSelector((state) => state.auth);
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
   const getGroups = useCallback(async () => {
     try {
+      setLoading(true);
       getGroupsRef.current = new AbortController();
 
       const config = {
@@ -56,12 +59,22 @@ const GroupList = ({ onSelect }) => {
         dispatch(setAuth({ login: false, token: null }));
         navigate("/sign-in");
       }
+    } finally {
+      setLoading(false);
     }
   }, [dispatch, token, navigate]);
 
   useEffect(() => {
     getGroups();
   }, [getGroups, token]);
+
+  if (loading) {
+    return (
+      <div className="group-list d-flex justify-content-center align-items-center">
+        <span className="spinner-border text-success" />
+      </div>
+    );
+  }
 
   if (groups.length === 0) {
     return (
@@ -79,16 +92,25 @@ const GroupList = ({ onSelect }) => {
           onClick={() => onSelect && onSelect(group)}
           className="group-item d-flex align-items-center"
         >
-          <img src={group.image} alt={group.name} className="group-avatar" />
+          <img src={group?.image || '/assets/icons/group-placeholder.png'} alt={group.name} className="group-avatar" />
           <div className="group-info">
             <div className="group-header d-flex justify-content-between">
               <span className="group-name">{group.name}</span>
-              <span className="group-time">
-                {formatDateTime(group.lastMessageTime)}
-              </span>
+              {group.lastMessageTime && (
+                <span className="group-time">
+                  {formatDateTime(group.lastMessageTime)}
+                </span>
+              )}
             </div>
             <div className="group-message d-flex justify-content-between">
-              <span>{group.lastMessage}</span>
+              <span>
+                {group?.lastMessage ||
+                  (group?.lastAttachment[group?.lastAttachment.length - 1]
+                    ? group?.lastAttachment[group?.lastAttachment.length - 1]
+                        .split("/")
+                        .pop()
+                    : "")}
+              </span>
               {group.unreadCount > 0 && (
                 <span className="unread-count">{group.unreadCount}</span>
               )}

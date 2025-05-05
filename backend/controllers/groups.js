@@ -58,7 +58,7 @@ const getGroupList = async (req, res) => {
       groups.map(async (group) => {
         const lastMessage = await Message.findOne({ groupId: group._id })
           .sort({ timestamp: -1 })
-          .select("text timestamp")
+          .select("text timestamp attachments")
           .lean();
 
         return {
@@ -67,6 +67,7 @@ const getGroupList = async (req, res) => {
           image: group.image,
           members: group.members,
           lastMessage: lastMessage?.text || "",
+          lastAttachment: lastMessage?.attachments || "",
           lastMessageTime: lastMessage?.timestamp || null,
         };
       })

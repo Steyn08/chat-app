@@ -20,10 +20,15 @@ const updateProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
     const { name, email } = req.body;
-    console.log(name,email);
     
     if (name) user.profilename = name;
     if (email) user.email = email;
+
+    if(req.file){
+      console.log(req.file.path);
+      user.profileImage = req.file.path
+      
+    }
 
     await user.save();
     res.status(200).json({ message: "Profile updated successfully" });

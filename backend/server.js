@@ -42,7 +42,6 @@ const io = new Server(server, {
 
 app.set("io", io);
 const users = {};
-
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
@@ -51,6 +50,13 @@ io.on("connection", (socket) => {
     users[userId] = socket.id;
     socket.userId = userId;
     console.log(`User ${userId} registered with socket ${socket.id}`);
+  });
+
+  socket.on("check-user-online", (userIdToCheck) => {
+    console.log('check-user-online',userIdToCheck);
+    
+    const isOnline = Boolean(users[userIdToCheck]);
+    socket.emit("user-online-status", { userId: userIdToCheck, isOnline });
   });
 
   socket.on("disconnect", () => {
