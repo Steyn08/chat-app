@@ -19,8 +19,8 @@ const multer = require("multer");
 const Message = require("./models/Message.js");
 const messageRoutes = require("./routes/messages");
 const cookieParser = require("cookie-parser");
-import fs from 'fs';
-import path from 'path';
+const fs   = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
