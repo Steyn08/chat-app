@@ -72,7 +72,7 @@ const Sidebar = () => {
             token: null,
           })
         );
-        navigate("/login");
+        navigate("/sign-in");
       }
     } catch (e) {
       console.log(e);
@@ -83,18 +83,21 @@ const Sidebar = () => {
     <div className="sidebar rounded h-100 text-center d-flex flex-column justify-content-between align-items-center">
       <div>
         <div className="profile-section">
-          <img
-            src={
-              user?.profileImage
-                ? `${API_BASE_URL}/${user?.profileImage}`
-                : "/assets/icons/profile.jpg"
-            }
-            style={{objectFit:"cover"}}
-            alt="Profile"
-            className="profile-pic"
-            height={50}
-            width={50}
-          />
+          <Link to="/profile">
+            <img
+              src={
+                user?.profileImage
+                  ? `${API_BASE_URL}/${user.profileImage}?v=${Date.now()}`
+                  : "/assets/icons/profile.jpg"
+              }
+              onError={(e) => (e.target.src = "/assets/icons/profile.jpg")}
+              style={{ objectFit: "cover" }}
+              alt="Profile"
+              className="profile-pic"
+              height={50}
+              width={50}
+            />
+          </Link>
         </div>
         <nav>
           <ul>
@@ -108,12 +111,12 @@ const Sidebar = () => {
                 <FontAwesomeIcon icon={faComment} />
               </Link>
             </li>
-            <li>
+            {/* <li>
               <FontAwesomeIcon icon={faBell} />
             </li>
             <li>
               <FontAwesomeIcon icon={faCog} />
-            </li>
+            </li> */}
           </ul>
         </nav>
       </div>

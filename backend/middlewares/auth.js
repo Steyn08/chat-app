@@ -8,7 +8,7 @@ const authMiddleware = async (req, res, next) => {
     if (!token) {
       return res
         .status(401)
-        .json({ message: "Access denied! No token provided." });
+        .json({ success: false, message: "Access denied! Unauthenticated." });
     }
 
     const checkIfBlacklisted = await BlackList.findOne({ token: token });

@@ -12,7 +12,7 @@ const UserSchema = new mongoose.Schema({
   userCode: { type: String, unique: true, sparse: true, default: generateUserCode }, 
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   profileImage: { type: String }, 
-});
+}, { timestamps: true });
 
 
 UserSchema.pre("save", async function (next) {

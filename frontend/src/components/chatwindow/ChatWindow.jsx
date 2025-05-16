@@ -273,8 +273,11 @@ const ChatWindow = () => {
   };
 
   return (
-    <div className="d-flex chats-block row w-100 mx-2">
-      <div className="col-4 d-flex flex-column justify-content-between chats-list">
+    <div className="d-flex chats-block gap-2 w-100 mx-2">
+      <div
+        className="d-flex flex-column gap-4 justify-content-between chats-list"
+        style={{ width: "450px" }}
+      >
         {/* <input
           type="search"
           placeholder="Search..."
@@ -299,7 +302,7 @@ const ChatWindow = () => {
       </div>
 
       {selectedChat?.type === "group" && (
-        <div className="col-8 h-100">
+        <div className="h-100" style={{ flexGrow: "1" }}>
           <div className="chat-view rounded d-flex flex-column justify-content-between">
             <div className="profile-details d-flex justify-content-between p-3">
               <div className="status d-flex align-items-center">
@@ -461,7 +464,7 @@ const ChatWindow = () => {
       )}
 
       {selectedChat?.type === "person" && (
-        <div className="col-8 h-100">
+        <div className="h-100" style={{ flexGrow: "1" }}>
           <div className="chat-view rounded d-flex flex-column justify-content-between">
             <div className="profile-details d-flex justify-content-between p-3">
               <div className="status d-flex align-items-center">

@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { setAuth } from "./slices/authSlice.jsx";
 import { setUser } from "./slices/profileSlice.jsx";
+import Profile from "./components/profile/Profile.jsx";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
@@ -36,7 +37,7 @@ function App() {
 
       const response = await axios.get(`${API_BASE_URL}/user/profile`, config);
       const responseData = response.data;
-      
+
       if (responseData.success) {
         dispatch(setUser(responseData.user || []));
       } else {
@@ -82,6 +83,7 @@ function App() {
       <Route path="" element={<PrivateRoute />}>
         <Route path="/" element={<Home />} />
         <Route path="chats" element={<ChatWindow />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
     </Routes>
   );

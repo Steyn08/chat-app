@@ -1,5 +1,10 @@
 const express = require("express");
-const { getUser, updateProfile } = require("../controllers/profile");
+const {
+  getUser,
+  updateProfile,
+  updateProfileImage,
+  removeProfileImage,
+} = require("../controllers/profile");
 
 const path = require("path");
 const multer = require("multer");
@@ -22,6 +27,19 @@ router.get("/profile", getUser, (req, res) => {
   res.json({ message: `Welcome ${req.user.username}` });
 });
 
-router.post("/profile/update",upload.single("profile_image"), updateProfile, (req, res) => {});
+router.post(
+  "/profile/update",
+  upload.single("profile_image"),
+  updateProfile,
+  (req, res) => {}
+);
+router.post(
+  "/profile/update-profile-image",
+  upload.single("profile_image"),
+  updateProfileImage,
+  (req, res) => {}
+);
+
+router.delete("/profile/image", removeProfileImage, (req, res) => {});
 
 module.exports = router;
