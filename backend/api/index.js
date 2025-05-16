@@ -24,7 +24,7 @@ const app = express();
 const server = http.createServer(app);
 const upload = multer();
 
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 connectDB();
 
 app.use(express.json());
@@ -34,7 +34,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: process.env.CLIENT_URL,
     methods: ["GET", "POST"],
     credentials: true,
   },
