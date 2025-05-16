@@ -19,10 +19,18 @@ const multer = require("multer");
 const Message = require("./models/Message.js");
 const messageRoutes = require("./routes/messages");
 const cookieParser = require("cookie-parser");
+import fs from 'fs';
+import path from 'path';
 
 const app = express();
 const server = http.createServer(app);
 const upload = multer();
+
+const messagesDir = path.join(__dirname, 'public/messages');
+
+if (!fs.existsSync(messagesDir)) {
+  fs.mkdirSync(messagesDir, { recursive: true });
+}
 
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 connectDB();
