@@ -104,27 +104,83 @@
 
       &.own {
         justify-content: flex-end;
+        align-self: flex-end;
+        align-items: flex-end;
 
-        .msg-block {
-          justify-content: flex-end;
-        }
-
-        .message-text {
-          background: $primary-color;
+        .message-bubble {
+          background-color: $primary-color;
           color: #fff;
+          border-top-right-radius: 0;
+          .message-time{
+            color: #fff !important;
+          }
         }
       }
 
-      &.other {
-        justify-content: flex-start;
+      // &.own {
+      //   justify-content: flex-end;
 
-        .msg-block {
-          justify-content: flex-start;
+      //   .msg-block {
+      //     justify-content: flex-end;
+      //   }
+
+      //   .message-text {
+      //     background: $primary-color;
+      //     color: #fff;
+      //   }
+      // }
+
+      // &.other {
+      //   justify-content: flex-start;
+
+      //   .msg-block {
+      //     justify-content: flex-start;
+      //   }
+
+      //   .message-text {
+      //     background: #e0e0e0;
+      //     color: #000;
+      //   }
+      // }
+
+      &.other {
+        align-self: flex-start;
+        align-items: flex-start;
+
+        .message-bubble {
+          background-color: #FFFF;
+          color: #000;
+          border-top-left-radius: 0;
+          padding: 10px;
+          .message-text {
+            color: #000;
+          }
         }
 
+        .sender-name {
+          font-size: 0.75rem;
+          font-weight: bold;
+          margin-bottom: 5px;
+          color: #25d366; 
+        }
+      }
+
+      .message-bubble {
+        padding: 5px 5px;
+        border-radius: 12px;
+        word-wrap: break-word;
+        display: inline-block;
+        max-width: 75%;
+        min-width: 100px;
+
         .message-text {
-          background: #e0e0e0;
-          color: #000;
+          font-size: 14px;
+          padding: 5px;
+          // line-height: 1.5;
+        }
+
+        .image-preview-wrapper {
+          margin: 8px 0;
         }
       }
 
@@ -133,6 +189,7 @@
         border-radius: 12px;
         font-size: 14px;
         word-wrap: break-word;
+        text-align: justify;
       }
     }
   }
@@ -208,6 +265,11 @@
       color: #000;
     }
   }
+}
+
+.sender-name {
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 @media (max-width: 768px) {

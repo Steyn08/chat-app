@@ -111,7 +111,7 @@ const listFriend = async (req, res) => {
   try {
     const currentUser = await User.findById(req.user.userId).populate(
       "friends",
-      "profilename email"
+      "profilename email profileImage"
     );
 
     if (!currentUser) {
@@ -135,6 +135,7 @@ const listFriend = async (req, res) => {
         return {
           _id: friend._id,
           name: friend.profilename,
+          profileImage: friend.profileImage || "",
           email: friend.email,
           lastMessage: lastMessage?.text || "",
           lastAttachment: lastMessage?.attachments || "",

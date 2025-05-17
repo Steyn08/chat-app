@@ -146,9 +146,10 @@ const PeopleList = ({ onSelect }) => {
           <img
             src={
               people?.profileImage
-                ? `${API_BASE_URL}/ ${people?.profileImage}`
+                ? `${API_BASE_URL}/${people.profileImage}?v=${Date.now()}`
                 : "/assets/icons/profile.jpg"
             }
+            onError={(e) => (e.target.src = "/assets/icons/profile.jpg")}
             alt={people.name}
             className="people-avatar"
           />

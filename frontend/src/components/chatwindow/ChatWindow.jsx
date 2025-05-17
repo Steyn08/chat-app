@@ -44,43 +44,47 @@ const ChatWindow = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isChatUserOnline, setIsChatUserOnline] = useState(false);
+  const [messageLoading, setMessageLoading] = useState(false);
+
+  const formatDateSeparator = (date) => {
+    const d = new Date(date);
+    const today = new Date();
+    const isToday =
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+
+    const isYesterday =
+      d.getDate() === today.getDate() - 1 &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+
+    if (isToday) return "Today";
+    if (isYesterday) return "Yesterday";
+
+    return d.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const formatMessageTime = (timestamp) =>
+    new Date(timestamp).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
 
   const openImage = (imageUrl) => {
     setViewerImage(imageUrl);
     setViewerOpen(true);
   };
-  // const [messages, setMessages] = useState([
-  //   { id: 1, text: "Hey! How are you?", sender: "other" },
-  //   { id: 2, text: "I'm good! How about you?", sender: "own" },
-  //   {
-  //     id: 3,
-  //     text: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
-  //     sender: "other",
-  //   },
-  //   {
-  //     id: 4,
-  //     text: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
-  //     sender: "other",
-  //   },
-  //   {
-  //     id: 5,
-  //     text: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
-  //     sender: "other",
-  //   },
-  //   {
-  //     id: 6,
-  //     text: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
-  //     sender: "other",
-  //   },
-  //   {
-  //     id: 7,
-  //     text: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
-  //     sender: "other",
-  //   },
-  // ]);
 
   const fetchGroupMessages = async (groupId) => {
     try {
+      setMessageLoading(true);
       getMessageRef.current = new AbortController();
 
       const config = {
@@ -106,11 +110,14 @@ const ChatWindow = () => {
       }
     } catch (err) {
       console.error("Error loading messages", err);
+    } finally {
+      setMessageLoading(false);
     }
   };
 
   const fetchFriendsMessages = async (userId) => {
     try {
+      setMessageLoading(true);
       getFriendsMessageRef.current = new AbortController();
 
       const config = {
@@ -136,28 +143,14 @@ const ChatWindow = () => {
       }
     } catch (err) {
       console.error("Error loading messages", err);
+    } finally {
+      setMessageLoading(false);
     }
   };
 
   const getFileExtension = (url) => {
     const extension = url.split(".").pop().toLowerCase();
     return extension;
-  };
-
-  const getFileIcon = (fileUrl) => {
-    const extension = getFileExtension(fileUrl);
-
-    if (extension === "pdf") {
-      return faFilePdf;
-    } else if (extension === "doc" || extension === "docx") {
-      return faFileWord;
-    } else if (extension === "xls" || extension === "xlsx") {
-      return faFileExcel;
-    } else if (["jpg", "jpeg", "png", "gif", "bmp"].includes(extension)) {
-      return faFileImage;
-    } else {
-      return faFile;
-    }
   };
 
   useEffect(() => {
@@ -272,11 +265,13 @@ const ChatWindow = () => {
     }
   };
 
+  let lastDate = null;
+
   return (
     <div className="d-flex chats-block gap-2 w-100 mx-2">
       <div
         className="d-flex flex-column gap-4 justify-content-between chats-list"
-        style={{ width: "450px" }}
+        style={{ minWidth: "450px", maxWidth: "450px" }}
       >
         {/* <input
           type="search"
@@ -337,128 +332,171 @@ const ChatWindow = () => {
               </div>
             </div>
 
-            <div className="messages-block p-3">
-              {messages.length > 0 &&
-                messages.map((msg) => (
-                  <div
-                    key={msg?._id}
-                    className={`message-container ${
-                      (msg?.sender?._id || msg?.sender) === user._id
-                        ? "own"
-                        : "other"
-                    }`}
-                  >
-                    {msg.text && (
-                      <div className="w-75 d-flex msg-block">
-                        <span className="message-text badge text-wrap px-3 py-2">
-                          {msg.text}
-                        </span>
+            {messageLoading ? (
+              <div
+                className="flex-grow-1 d-flex justify-content-center align-items-center"
+                style={{ minHeight: "300px" }}
+              >
+                <span className="spinner-border text-success" />
+              </div>
+            ) : (
+              <>
+                <div className="messages-block p-3">
+                  {messages.length > 0 &&
+                    messages.map((msg) => {
+                      const currentDate = new Date(
+                        msg.timestamp
+                      ).toDateString();
+                      const showDateSeparator = lastDate !== currentDate;
+                      lastDate = currentDate;
+                      const isOwnMessage =
+                        (msg?.sender?._id || msg?.sender) === user._id;
+                      const senderName = msg?.sender?.username || "Unknown";
+
+                      return (
+                        <>
+                          {showDateSeparator && (
+                            <div className="date-separator text-center my-3">
+                              <span>{formatDateSeparator(msg.timestamp)}</span>
+                            </div>
+                          )}
+                          <div
+                            key={msg?._id}
+                            className={`message-container ${
+                              isOwnMessage ? "own" : "other"
+                            }`}
+                          >
+                            <div className="message-bubble">
+                              {!isOwnMessage && (
+                                <small className="sender-name d-block text-muted p-0 m-0">
+                                  {senderName}
+                                </small>
+                              )}
+
+                              {msg.text && (
+                                <div className="w-100 d-flex msg-block">
+                                  <span className="message-text badge text-wrap">
+                                    {msg.text}
+                                  </span>
+                                </div>
+                              )}
+
+                              {msg.attachments &&
+                                msg.attachments.map((file, idx) => {
+                                  const fullUrl = `${API_BASE_URL}/${file}`;
+                                  const fileExtension =
+                                    getFileExtension(fullUrl);
+                                  const fileName = file.split("/").pop();
+
+                                  const isImage = [
+                                    "jpg",
+                                    "jpeg",
+                                    "png",
+                                    "gif",
+                                    "bmp",
+                                  ].includes(fileExtension);
+
+                                  return isImage ? (
+                                    <div
+                                      key={idx}
+                                      className="image-preview-wrapper"
+                                    >
+                                      <img
+                                        src={fullUrl}
+                                        alt={fileName}
+                                        onClick={() => openImage(fullUrl)}
+                                        className="image-thumbnail"
+                                      />
+                                      <a
+                                        href={fullUrl}
+                                        download
+                                        className="download-button"
+                                      >
+                                        <FontAwesomeIcon icon={faDownload} />
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <FilePreviewCard
+                                      key={idx}
+                                      fullUrl={fullUrl}
+                                      fileName={fileName}
+                                      fileExtension={fileExtension}
+                                    />
+                                  );
+                                })}
+
+                              <small className="message-time d-block text-end text-muted p-0 m-0">
+                                {formatMessageTime(msg.timestamp)}
+                              </small>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })}
+
+                  <div ref={messagesEndRef} />
+                  {viewerOpen && (
+                    <Lightbox
+                      mainSrc={viewerImage}
+                      onCloseRequest={() => setViewerOpen(false)}
+                    />
+                  )}
+                </div>
+
+                <div className="respond-block d-flex align-items-center justify-content-between p-3 gap-2">
+                  <div className="d-flex justify-content-between align-items-center w-100 gap-2 p-2 rounded message-input-block">
+                    <input
+                      type="file"
+                      multiple
+                      style={{ display: "none" }}
+                      id="fileInput"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files);
+                        setAttachments(files);
+                      }}
+                    />
+                    <label
+                      htmlFor="fileInput"
+                      className="icon-btn"
+                      style={{ cursor: "pointer" }}
+                    >
+                      <FontAwesomeIcon icon={faPaperclip} />
+                    </label>
+                    <input
+                      type="text"
+                      className="border-0 w-100"
+                      placeholder="Type your message..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+                    />
+                    {attachments.length > 0 && (
+                      <div className="attachments-preview-wrapper">
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="badge bg-secondary">
+                            {attachments.length} attachment
+                            {attachments.length > 1 ? "s" : ""}
+                          </span>
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#attachmentsModal"
+                          >
+                            <FontAwesomeIcon icon={faEye} />
+                          </button>
+                        </div>
                       </div>
                     )}
-
-                    {msg.attachments &&
-                      msg.attachments.map((file, idx) => {
-                        const fullUrl = `${API_BASE_URL}/${file}`;
-                        const fileExtension = getFileExtension(fullUrl); // returns 'pdf', 'docx', etc.
-                        const fileName = file.split("/").pop();
-
-                        const isImage = [
-                          "jpg",
-                          "jpeg",
-                          "png",
-                          "gif",
-                          "bmp",
-                        ].includes(fileExtension);
-
-                        return isImage ? (
-                          <div key={idx} className="image-preview-wrapper">
-                            <img
-                              src={fullUrl}
-                              alt={fileName}
-                              onClick={() => openImage(fullUrl)}
-                              className="image-thumbnail"
-                            />
-                            <a
-                              href={fullUrl}
-                              download
-                              className="download-button"
-                            >
-                              <FontAwesomeIcon icon={faDownload} />
-                            </a>
-                          </div>
-                        ) : (
-                          <FilePreviewCard
-                            key={idx}
-                            fullUrl={fullUrl}
-                            fileName={fileName}
-                            fileExtension={fileExtension}
-                          />
-                        );
-                      })}
                   </div>
-                ))}
-
-              <div ref={messagesEndRef} />
-              {viewerOpen && (
-                <Lightbox
-                  mainSrc={viewerImage}
-                  onCloseRequest={() => setViewerOpen(false)}
-                />
-              )}
-            </div>
-
-            <div className="respond-block d-flex align-items-center justify-content-between p-3 gap-2">
-              <div className="d-flex justify-content-between align-items-center w-100 gap-2 p-2 rounded message-input-block">
-                <input
-                  type="file"
-                  multiple
-                  style={{ display: "none" }}
-                  id="fileInput"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files);
-                    setAttachments(files);
-                  }}
-                />
-                <label
-                  htmlFor="fileInput"
-                  className="icon-btn"
-                  style={{ cursor: "pointer" }}
-                >
-                  <FontAwesomeIcon icon={faPaperclip} />
-                </label>
-                <input
-                  type="text"
-                  className="border-0 w-100"
-                  placeholder="Type your message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-                />
-                {attachments.length > 0 && (
-                  <div className="attachments-preview-wrapper">
-                    <div className="d-flex align-items-center gap-2">
-                      <span className="badge bg-secondary">
-                        {attachments.length} attachment
-                        {attachments.length > 1 ? "s" : ""}
-                      </span>
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        data-bs-toggle="modal"
-                        data-bs-target="#attachmentsModal"
-                      >
-                        <FontAwesomeIcon icon={faEye} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <button
-                className="icon-btn send-btn p-2 rounded"
-                onClick={sendMessage}
-              >
-                <FontAwesomeIcon icon={faPaperPlane} color="#fff" />
-              </button>
-            </div>
+                  <button
+                    className="icon-btn send-btn p-2 rounded"
+                    onClick={sendMessage}
+                  >
+                    <FontAwesomeIcon icon={faPaperPlane} color="#fff" />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -469,7 +507,13 @@ const ChatWindow = () => {
             <div className="profile-details d-flex justify-content-between p-3">
               <div className="status d-flex align-items-center">
                 <img
-                  src="/assets/icons/profile.jpg"
+                  // src="/assets/icons/profile.jpg"
+                  src={
+                    selectedChat?.data?.profileImage
+                      ? `${API_BASE_URL}/${selectedChat?.data?.profileImage}?v=${Date.now()}`
+                      : "/assets/icons/profile.jpg"
+                  }
+                  onError={(e) => (e.target.src = "/assets/icons/profile.jpg")}
                   alt="Profile"
                   className="profile-pic"
                 />
@@ -499,127 +543,162 @@ const ChatWindow = () => {
               </div>
             </div>
 
-            <div className="messages-block p-3">
-              {messages.length > 0 &&
-                messages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`message-container ${
-                      (msg?.sender?._id || msg?.sender) === user._id
-                        ? "own"
-                        : "other"
-                    }`}
-                  >
-                    {msg.text && (
-                      <div className="w-75 d-flex msg-block">
-                        <span className="message-text badge text-wrap px-3 py-2">
-                          {msg.text}
-                        </span>
+            {messageLoading ? (
+              <div
+                className="flex-grow-1 d-flex justify-content-center align-items-center"
+                style={{ minHeight: "300px" }}
+              >
+                <span className="spinner-border text-success" />
+              </div>
+            ) : (
+              <>
+                <div className="messages-block p-3">
+                  {messages.length > 0 &&
+                    messages.map((msg) => {
+                      const currentDate = new Date(
+                        msg.timestamp
+                      ).toDateString();
+                      const showDateSeparator = lastDate !== currentDate;
+                      lastDate = currentDate;
+                      const isOwnMessage =
+                        (msg?.sender?._id || msg?.sender) === user._id;
+
+                      return (
+                        <>
+                          {showDateSeparator && (
+                            <div className="date-separator text-center my-3">
+                              <span>{formatDateSeparator(msg.timestamp)}</span>
+                            </div>
+                          )}
+                          <div
+                            key={msg?._id}
+                            className={`message-container ${
+                              isOwnMessage ? "own" : "other"
+                            }`}
+                          >
+                            <div className="message-bubble">
+                              {msg.text && (
+                                <div className="w-100 d-flex msg-block">
+                                  <span className="message-text badge text-wrap">
+                                    {msg.text}
+                                  </span>
+                                </div>
+                              )}
+
+                              {msg.attachments &&
+                                msg.attachments.map((file, idx) => {
+                                  const fullUrl = `${API_BASE_URL}/${file}`;
+                                  const fileExtension =
+                                    getFileExtension(fullUrl); // returns 'pdf', 'docx', etc.
+                                  const fileName = file.split("/").pop();
+
+                                  const isImage = [
+                                    "jpg",
+                                    "jpeg",
+                                    "png",
+                                    "gif",
+                                    "bmp",
+                                  ].includes(fileExtension);
+
+                                  return isImage ? (
+                                    <div
+                                      key={idx}
+                                      className="image-preview-wrapper"
+                                    >
+                                      <img
+                                        src={fullUrl}
+                                        alt={fileName}
+                                        onClick={() => openImage(fullUrl)}
+                                        className="image-thumbnail"
+                                      />
+                                      <a
+                                        href={fullUrl}
+                                        download
+                                        className="download-button"
+                                      >
+                                        <FontAwesomeIcon icon={faDownload} />
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <FilePreviewCard
+                                      key={idx}
+                                      fullUrl={fullUrl}
+                                      fileName={fileName}
+                                      fileExtension={fileExtension}
+                                    />
+                                  );
+                                })}
+                              <small className="message-time d-block text-end text-muted p-0 m-0">
+                                {formatMessageTime(msg.timestamp)}
+                              </small>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })}
+                  <div ref={messagesEndRef} />
+                  {viewerOpen && (
+                    <Lightbox
+                      mainSrc={viewerImage}
+                      onCloseRequest={() => setViewerOpen(false)}
+                    />
+                  )}
+                </div>
+
+                <div className="respond-block d-flex align-items-center justify-content-between p-3 gap-2">
+                  <div className="d-flex justify-content-between align-items-center w-100 gap-2 p-2 rounded message-input-block">
+                    <input
+                      type="file"
+                      multiple
+                      style={{ display: "none" }}
+                      id="fileInput"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files);
+                        setAttachments(files);
+                      }}
+                    />
+                    <label
+                      htmlFor="fileInput"
+                      className="icon-btn"
+                      style={{ cursor: "pointer" }}
+                    >
+                      <FontAwesomeIcon icon={faPaperclip} />
+                    </label>
+                    <input
+                      type="text"
+                      className="border-0 w-100"
+                      placeholder="Type your message..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+                    />
+                    {attachments.length > 0 && (
+                      <div className="attachments-preview-wrapper">
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="badge bg-secondary">
+                            {attachments.length} attachment
+                            {attachments.length > 1 ? "s" : ""}
+                          </span>
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#attachmentsModal"
+                          >
+                            <FontAwesomeIcon icon={faEye} />
+                          </button>
+                        </div>
                       </div>
                     )}
-
-                    {msg.attachments &&
-                      msg.attachments.map((file, idx) => {
-                        const fullUrl = `${API_BASE_URL}/${file}`;
-                        const fileExtension = getFileExtension(fullUrl); // returns 'pdf', 'docx', etc.
-                        const fileName = file.split("/").pop();
-
-                        const isImage = [
-                          "jpg",
-                          "jpeg",
-                          "png",
-                          "gif",
-                          "bmp",
-                        ].includes(fileExtension);
-
-                        return isImage ? (
-                          <div key={idx} className="image-preview-wrapper">
-                            <img
-                              src={fullUrl}
-                              alt={fileName}
-                              onClick={() => openImage(fullUrl)}
-                              className="image-thumbnail"
-                            />
-                            <a
-                              href={fullUrl}
-                              download
-                              className="download-button"
-                            >
-                              <FontAwesomeIcon icon={faDownload} />
-                            </a>
-                          </div>
-                        ) : (
-                          <FilePreviewCard
-                            key={idx}
-                            fullUrl={fullUrl}
-                            fileName={fileName}
-                            fileExtension={fileExtension}
-                          />
-                        );
-                      })}
                   </div>
-                ))}
-              <div ref={messagesEndRef} />
-              {viewerOpen && (
-                <Lightbox
-                  mainSrc={viewerImage}
-                  onCloseRequest={() => setViewerOpen(false)}
-                />
-              )}
-            </div>
-
-            <div className="respond-block d-flex align-items-center justify-content-between p-3 gap-2">
-              <div className="d-flex justify-content-between align-items-center w-100 gap-2 p-2 rounded message-input-block">
-                <input
-                  type="file"
-                  multiple
-                  style={{ display: "none" }}
-                  id="fileInput"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files);
-                    setAttachments(files);
-                  }}
-                />
-                <label
-                  htmlFor="fileInput"
-                  className="icon-btn"
-                  style={{ cursor: "pointer" }}
-                >
-                  <FontAwesomeIcon icon={faPaperclip} />
-                </label>
-                <input
-                  type="text"
-                  className="border-0 w-100"
-                  placeholder="Type your message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-                />
-                {attachments.length > 0 && (
-                  <div className="attachments-preview-wrapper">
-                    <div className="d-flex align-items-center gap-2">
-                      <span className="badge bg-secondary">
-                        {attachments.length} attachment
-                        {attachments.length > 1 ? "s" : ""}
-                      </span>
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        data-bs-toggle="modal"
-                        data-bs-target="#attachmentsModal"
-                      >
-                        <FontAwesomeIcon icon={faEye} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <button
-                className="icon-btn send-btn p-2 rounded"
-                onClick={sendMessage}
-              >
-                <FontAwesomeIcon icon={faPaperPlane} color="#fff" />
-              </button>
-            </div>
+                  <button
+                    className="icon-btn send-btn p-2 rounded"
+                    onClick={sendMessage}
+                  >
+                    <FontAwesomeIcon icon={faPaperPlane} color="#fff" />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

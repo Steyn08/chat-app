@@ -28,6 +28,7 @@
     }
 
     .people-info {
+      overflow: hidden;
       flex-grow: 1;
 
       .people-header {
@@ -44,9 +45,32 @@
       }
 
       .people-message {
+        align-items: center;
         font-size: 12px;
         color: #555;
+      
+        span:first-child {
+          flex: 1;
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          margin-right: 8px;
+        }
+      
+        .unread-count {
+          flex-shrink: 0;
+          background: red;
+          color: white;
+          font-size: 12px;
+          width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+        }
       }
+      
     }
 
     .unread-count {
