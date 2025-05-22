@@ -14,7 +14,11 @@ const path = require("path");
 const multer = require("multer");
 const router = express.Router();
 
+const messagesDir = path.join(__dirname, 'public/group/profile_images');
 
+if (!fs.existsSync(messagesDir)) {
+  fs.mkdirSync(messagesDir, { recursive: true });
+}
 
 
 const storage = multer.diskStorage({
