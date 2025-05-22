@@ -5,7 +5,7 @@ const GroupSchema = new mongoose.Schema({
   groupDescription: { type: String, required: false },
   admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  groupIcon: [{ type: String }], 
+  groupIcon: { type: String }, 
 });
 
 module.exports = mongoose.model('Group', GroupSchema);

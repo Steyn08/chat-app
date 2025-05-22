@@ -1,6 +1,8 @@
 const User = require("../models/User");
 const Group = require("../models/Group");
 const Message = require("../models/Message");
+const fs = require("fs");
+const path = require("path");
 
 const createGroup = async (req, res) => {
   try {
@@ -64,8 +66,10 @@ const getGroupList = async (req, res) => {
         return {
           _id: group._id,
           name: group.name,
-          image: group.image,
+          groupIcon: group.groupIcon,
           members: group.members,
+          groupDescription: group.groupDescription,
+          admin: group.admin,
           lastMessage: lastMessage?.text || "",
           lastAttachment: lastMessage?.attachments || "",
           lastMessageTime: lastMessage?.timestamp || null,
@@ -154,6 +158,76 @@ const removeMember = async (req, res) => {
   }
 };
 
+const updateProfileImage = async (req, res) => {
+  try {
+    console.log(req.params.userId);
+
+    const group = await Group.findById(req.params.groupId);
+    if (!group)
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
+
+    if (group.profileImage) {
+      const oldImagePath = path.join(__dirname, "../", group.groupIcon);
+      console.log("old-image", oldImagePath);
+
+      fs.unlink(oldImagePath, (err) => {
+        if (err) {
+          console.warn("Old image not deleted (may not exist):", err.message);
+        }
+      });
+    }
+
+    if (req.file) {
+      group.groupIcon = req.file.path;
+    } else {
+      return res
+        .status(400)
+        .json({ success: false, message: "No image uploaded" });
+    }
+    await group.save();
+
+    res.json({ group, success: true, message: "User removed successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+const removeProfileImage = async (req, res) => {
+  try {
+    const group = await Group.findById(req.params.groupId);
+    if (!group || !group.groupIcon) {
+      return res.status(404).json({
+        success: false,
+        message: "No profile image found",
+      });
+    }
+
+    const imagePath = path.join(__dirname, "../", group.groupIcon);
+
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
+
+    group.groupIcon = "";
+    await group.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Profile image removed",
+      data: { group },
+    });
+  } catch (error) {
+    console.error("Error removing profile image:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 module.exports = {
   createGroup,
   getGroup,
@@ -162,4 +236,6 @@ module.exports = {
   addMember,
   removeMember,
   getGroupList,
+  updateProfileImage,
+  removeProfileImage
 };

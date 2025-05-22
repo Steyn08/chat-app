@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import { setAuth } from "../../slices/authSlice";
 import moment from "moment";
 
-
 const formatDateTime = (isoString) => {
   return moment(isoString).format("dddd, h:mma");
 };
@@ -92,7 +91,14 @@ const GroupList = ({ onSelect }) => {
           onClick={() => onSelect && onSelect(group)}
           className="group-item d-flex align-items-center"
         >
-          <img src={group?.image || '/assets/icons/group-placeholder.png'} alt={group.name} className="group-avatar" />
+          <img
+            src={`${API_BASE_URL}/${group?.groupIcon}?v=${Date.now()}`}
+            onError={(e) =>
+              (e.target.src = "/assets/icons/group-placeholder.png")
+            }
+            alt={group.name}
+            className="group-avatar"
+          />
           <div className="group-info">
             <div className="group-header d-flex justify-content-between">
               <span className="group-name">{group.name}</span>
