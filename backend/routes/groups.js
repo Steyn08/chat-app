@@ -13,6 +13,7 @@ const {
 const path = require("path");
 const multer = require("multer");
 const router = express.Router();
+const fs   = require('fs');
 
 const messagesDir = path.join(__dirname, 'public/group/profile_images');
 
