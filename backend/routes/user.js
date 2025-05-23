@@ -5,14 +5,14 @@ const {
   updateProfileImage,
   removeProfileImage,
 } = require("../controllers/profile");
-const fs   = require('fs');
+const fs = require("fs");
 
 const path = require("path");
 const multer = require("multer");
 
 const router = express.Router();
 
-const messagesDir = path.join(__dirname, 'public/profile_images');
+const messagesDir = path.join(__dirname, "..", "public/profile_images");
 
 if (!fs.existsSync(messagesDir)) {
   fs.mkdirSync(messagesDir, { recursive: true });
