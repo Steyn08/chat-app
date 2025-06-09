@@ -95,7 +95,6 @@ const Profile = () => {
     } else if (action === "upload") {
       document.getElementById("profileUpload").click();
     } else if (action === "remove") {
-      console.log("Remove profile image");
       handleProfileDelete();
     }
   };

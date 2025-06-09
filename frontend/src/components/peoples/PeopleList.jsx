@@ -62,7 +62,7 @@ const formatDateTime = (isoString) => {
 };
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
-const PeopleList = ({ onSelect }) => {
+const PeopleList = ({setFriendsList, onSelect }) => {
   const dispatch = useDispatch();
   const [peoples, setPeoples] = useState([]);
   const getPeoplesRef = useRef(null);
@@ -88,10 +88,10 @@ const PeopleList = ({ onSelect }) => {
       const response = await axios.get(`${API_BASE_URL}/friends/list`, config);
 
       const responseData = response.data;
-      console.log(responseData);
 
       if (responseData.success) {
         if (responseData.data) {
+          setFriendsList(responseData.data);
           setPeoples(responseData.data);
         }
       } else {

@@ -36,7 +36,7 @@ const upload = multer({ storage });
 router.post("/create", createGroup);
 router.get("/list", getGroupList);
 router.get("/:groupId", getGroup);
-router.put("/:groupId", updateGroup);
+router.put("/:groupId", upload.none(), updateGroup);
 router.delete("/:groupId", deleteGroup);
 router.post("/:groupId/add-members", addMember);
 router.delete("/:groupId/remove-members/:userId", removeMember);

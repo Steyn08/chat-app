@@ -11,6 +11,7 @@ import {
   faClose,
   faEnvelope,
   faPen,
+  faAlignLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import GroupList from "../groups/GroupList";
 import PeopleList from "../peoples/PeopleList";
@@ -46,14 +47,17 @@ const ChatWindow = () => {
   const navigate = useNavigate();
   const [isChatUserOnline, setIsChatUserOnline] = useState(false);
   const [messageLoading, setMessageLoading] = useState(false);
-
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [friendsList, setFriendsList] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const uploadImageRef = useRef(null);
   const updateProfileRef = useRef(null);
   const deleteProfileRef = useRef(null);
-
+  const updateDetailsRef = useRef(null);
+  const addMemberRef = useRef(null);
+  const [groupData, setGroupData] = useState([]);
   const toggleInfoPanel = () => {
     setShowInfoPanel((prev) => !prev);
   };
@@ -162,10 +166,53 @@ const ChatWindow = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // setProfileData((prev) => ({ ...prev, [name]: value }));
+    setGroupData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async () => {};
+  const handleSubmit = async () => {
+    try {
+      updateDetailsRef.current = new AbortController();
+
+      const formData = new FormData();
+      formData.append("name", groupData.name);
+      formData.append("groupDescription", groupData.groupDescription);
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+        signal: updateDetailsRef.current.signal,
+      };
+      const response = await axios.put(
+        `${API_BASE_URL}/groups/${groupData._id}`,
+        formData,
+        config
+      );
+
+      const responseData = response.data;
+
+      if (responseData.success) {
+        window.location.reload();
+      } else {
+        if (responseData.logout) {
+          dispatch(
+            setAuth({
+              login: false,
+              token: null,
+            })
+          );
+          navigate("/sign-in");
+        }
+      }
+    } catch (e) {
+      if (e.response?.status === 401) {
+        dispatch(setAuth({ login: false, token: null }));
+        navigate("/sign-in");
+      }
+    }
+    setIsEditing(false);
+  };
 
   const handleProfileUpdate = async (file, groupId) => {
     try {
@@ -238,8 +285,6 @@ const ChatWindow = () => {
       socket.emit("check-user-online", selectedChat.data._id);
 
       socket.on("user-online-status", ({ userId, isOnline }) => {
-        console.log("user online");
-
         if (userId === selectedChat.data._id) {
           setIsChatUserOnline(isOnline);
         }
@@ -303,8 +348,6 @@ const ChatWindow = () => {
       const responseData = response.data;
 
       if (responseData.success && responseData.data) {
-        console.log("res", responseData.data);
-
         const enrichedMessages = responseData.data.map((data) => ({
           ...data,
           sender: selectedChat?.type === "group" ? user : user._id,
@@ -337,7 +380,6 @@ const ChatWindow = () => {
     } else if (action === "upload") {
       document.getElementById("profileUpload").click();
     } else if (action === "remove") {
-      console.log("Remove profile image");
       handleProfileDelete(selectedChat?.data?._id);
     }
   };
@@ -383,8 +425,52 @@ const ChatWindow = () => {
     }
   };
 
+  const handleAddMember = async (friendId, groupId) => {
+    try {
+      addMemberRef.current = new AbortController();
+
+      const config = {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: addMemberRef.current.signal,
+      };
+
+      const formData = new FormData();
+      formData.append("user_id", friendId);
+      const response = await axios.post(
+        `${API_BASE_URL}/groups/${groupId}/add-members`,
+        formData,
+        config
+      );
+
+      const responseData = response.data;
+
+      if (responseData.success) {
+        window.location.reload();
+      } else {
+        if (responseData.logout) {
+          dispatch(
+            setAuth({
+              login: false,
+              token: null,
+            })
+          );
+          navigate("/sign-in");
+        }
+      }
+    } catch (e) {
+      console.log(e);
+      if (e.response?.status === 401) {
+        dispatch(setAuth({ login: false, token: null }));
+        navigate("/sign-in");
+      }
+    }
+  };
+
   let lastDate = null;
-  console.log(selectedChat);
 
   return (
     <>
@@ -401,14 +487,16 @@ const ChatWindow = () => {
           <div className="groups-block rounded p-2">
             <h3 className="text-start">Groups</h3>
             <GroupList
-              onSelect={(group) =>
-                setSelectedChat({ type: "group", data: group })
-              }
+              onSelect={(group) => {
+                setSelectedChat({ type: "group", data: group });
+                setGroupData(group);
+              }}
             />
           </div>
           <div className="peoples-block rounded p-2">
             <h3 className="text-start">People</h3>
             <PeopleList
+              setFriendsList={setFriendsList}
               onSelect={(person) =>
                 setSelectedChat({ type: "person", data: person })
               }
@@ -1006,69 +1094,215 @@ const ChatWindow = () => {
                 />
               </div>
             </div>
-          </div>
-          <div className="info-block d-flex justify-content-between align-items-start flex-wrap p-3 mt-4">
-            <div className="flex-grow-1">
-              <div className="profile-item d-flex align-items-center mb-3">
-                <FontAwesomeIcon icon={faAddressBook} className="me-2" />
-                {isEditing &&
-                selectedChat?.type == "group" &&
-                selectedChat.data.admin == user._id ? (
-                  <input
-                    className="form-control"
-                    type="text"
-                    name="name"
-                    value={selectedChat?.data?.name || ""}
-                    onChange={handleChange}
-                  />
+            <div className="info-block d-flex justify-content-between align-items-start flex-wrap p-3 pb-0 mt-4 border-bottom">
+              <div className="flex-grow-1">
+                {selectedChat?.type == "group" ? (
+                  <>
+                    <div className="profile-item d-flex align-items-center mb-3">
+                      <FontAwesomeIcon icon={faAddressBook} className="me-2" />
+                      {isEditing &&
+                      selectedChat?.type == "group" &&
+                      selectedChat.data.admin == user._id ? (
+                        <input
+                          className="form-control"
+                          type="text"
+                          name="name"
+                          value={groupData?.name || ""}
+                          onChange={handleChange}
+                        />
+                      ) : (
+                        <span>{groupData?.name || "-"}</span>
+                      )}
+                    </div>
+
+                    <div className="profile-item d-flex align-items-center mb-3">
+                      <FontAwesomeIcon icon={faAlignLeft} className="me-2" />
+                      {isEditing &&
+                      selectedChat?.type == "group" &&
+                      selectedChat.data.admin == user._id ? (
+                        <input
+                          className="form-control"
+                          type="text"
+                          name="groupDescription"
+                          value={groupData?.groupDescription || ""}
+                          onChange={handleChange}
+                        />
+                      ) : (
+                        <span>{groupData?.groupDescription || "-"}</span>
+                      )}
+                    </div>
+                  </>
                 ) : (
-                  <span>{selectedChat?.data?.name || "-"}</span>
+                  <>
+                    <div className="profile-item d-flex align-items-center mb-3">
+                      <FontAwesomeIcon icon={faAddressBook} className="me-2" />
+
+                      <span>{selectedChat?.data?.name || "-"}</span>
+                    </div>
+                    <div className="profile-item d-flex align-items-center">
+                      <FontAwesomeIcon icon={faEnvelope} className="me-2" />
+                      <span>{selectedChat?.data?.email || ""}</span>
+                    </div>
+                  </>
                 )}
               </div>
 
-              {selectedChat?.type != "group" && (
-                <div className="profile-item d-flex align-items-center">
-                  <FontAwesomeIcon icon={faEnvelope} className="me-2" />
-                  <span>{selectedChat?.data?.email || ""}</span>
+              {isEditing &&
+              selectedChat?.type === "group" &&
+              selectedChat.data.admin === user._id ? (
+                <div className="mt-2 ms-3 w-100 d-flex justify-content-end gap-2">
+                  <button
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => setIsEditing(false)}
+                  >
+                    <FontAwesomeIcon icon={faClose} className="me-1" />
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-sm btn-success"
+                    onClick={handleSubmit}
+                  >
+                    <FontAwesomeIcon icon={faCheck} className="me-1" />
+                    Save
+                  </button>
                 </div>
+              ) : selectedChat?.type === "group" &&
+                selectedChat.data.admin === user._id ? (
+                <div className="mt-2 ms-3">
+                  <button
+                    className="btn btn-sm btn-outline-secondary rounded-circle"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <FontAwesomeIcon icon={faPen} />
+                  </button>
+                </div>
+              ) : (
+                <></>
               )}
             </div>
+            {selectedChat?.type === "group" && (
+              <div className="info-block d-flex flex-column justify-content-between align-items-start flex-wrap p-3">
+                <div className="d-flex justify-content-end w-100">
+                  <button
+                    className="btn btn-sm btn-primary"
+                    onClick={() => setShowAddMemberModal(true)}
+                  >
+                    + Add Member
+                  </button>
+                </div>
 
-            {isEditing &&
-            selectedChat?.type === "group" &&
-            selectedChat.data.admin === user._id ? (
-              <div className="mt-2 ms-3 w-100 d-flex justify-content-end gap-2">
-                <button
-                  className="btn btn-sm btn-outline-secondary"
-                  onClick={() => setIsEditing(false)}
-                >
-                  <FontAwesomeIcon icon={faClose} className="me-1" />
-                  Cancel
-                </button>
-                <button
-                  className="btn btn-sm btn-success"
-                  onClick={handleSubmit}
-                >
-                  <FontAwesomeIcon icon={faCheck} className="me-1" />
-                  Save
-                </button>
+                <h5>
+                  <small>{groupData.members.length}</small>&nbsp;Members
+                </h5>
+
+                <div className="members-list d-flex flex-column w-100">
+                  {groupData?.members
+                    ?.slice()
+                    .sort((a, b) =>
+                      a._id === groupData?.admin
+                        ? -1
+                        : b._id === groupData?.admin
+                        ? 1
+                        : 0
+                    )
+                    .map((member, index) => {
+                      return (
+                        <div
+                          key={index}
+                          className="d-flex justify-content-between align-items-center w-100 border-bottom pb-1"
+                        >
+                          <div>
+                            <img
+                              src={
+                                member?.profileImage
+                                  ? `${API_BASE_URL}/${
+                                      member.profileImage
+                                    }?v=${Date.now()}`
+                                  : "/assets/icons/profile.jpg"
+                              }
+                              onError={(e) =>
+                                (e.target.src = "/assets/icons/profile.jpg")
+                              }
+                              alt={member.name}
+                              className="people-avatar"
+                            />
+                            <span>
+                              {user?._id == member?._id
+                                ? "You"
+                                : member?.username}
+                            </span>
+                          </div>
+                          {groupData?.admin == member?._id && (
+                            <small
+                              className="text-white bg-secondary rounded p-1"
+                              style={{ fontSize: "10px" }}
+                            >
+                              Group admin
+                            </small>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
               </div>
-            ) : selectedChat?.type === "group" &&
-              selectedChat.data.admin === user._id ? (
-              <div className="mt-2 ms-3">
-                <button
-                  className="btn btn-sm btn-outline-secondary rounded-circle"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <FontAwesomeIcon icon={faPen} />
-                </button>
-              </div>
-            ) : (
-              <></>
             )}
           </div>
+        </div>
+      )}
 
-          {selectedChat?.type === "group" && <div></div>}
+      {showAddMemberModal && (
+        <div className="modal show d-block" tabIndex="-1" role="dialog">
+          <div className="modal-dialog" role="document">
+            <div className="modal-content">
+              <div className="modal-header d-flex justify-content-between">
+                <h5 className="modal-title">Add Member</h5>
+                <button
+                  type="button"
+                  className="close"
+                  onClick={() => setShowAddMemberModal(false)}
+                >
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div className="modal-body">
+                {/* Friend List Goes Here */}
+                {friendsList
+                  ?.filter(
+                    (friend) =>
+                      !groupData?.members?.some(
+                        (member) => member._id === friend._id
+                      )
+                  )
+                  .map((friend) => (
+                    <div
+                      key={friend._id}
+                      className="d-flex justify-content-between align-items-center border-bottom py-1"
+                    >
+                      <div>
+                        <img
+                          src={
+                            friend?.profileImage
+                              ? `${API_BASE_URL}/${friend.profileImage}`
+                              : "/assets/icons/profile.jpg"
+                          }
+                          alt={friend.name}
+                          className="people-avatar"
+                        />
+                        <span>{friend.name}</span>
+                      </div>
+                      <button
+                        className="btn btn-success btn-sm"
+                        onClick={() =>
+                          handleAddMember(friend._id, groupData?._id)
+                        }
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </>

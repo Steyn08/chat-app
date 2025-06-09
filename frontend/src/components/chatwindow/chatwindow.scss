@@ -274,11 +274,18 @@
 }
 
 .info-sidebar {
-
   background-color: $secondary-color;
-    border-radius: 8px;
-    width: 450px;
-  
+  border-radius: 8px;
+  width: 450px;
+  overflow-y: auto;
+
+  .info-header {
+    position: sticky;
+    top: 0;
+    background-color:$secondary-color ;
+    z-index: 999;
+  }
+
   .profile-pic-lg {
     width: 60px;
     height: 60px;
@@ -286,6 +293,13 @@
   }
 }
 
+.people-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 10px;
+}
 
 @media (max-width: 768px) {
   .chats-block {

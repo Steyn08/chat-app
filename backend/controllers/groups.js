@@ -50,7 +50,7 @@ const getGroupList = async (req, res) => {
     const currentUser = req.user.userId;
     const groups = await Group.find({ members: currentUser }).populate(
       "members",
-      "username"
+      "username profileImage profilename"
     );
 
     if (!groups.length)
@@ -85,7 +85,7 @@ const getGroupList = async (req, res) => {
 
 const updateGroup = async (req, res) => {
   try {
-    const { name, group_description } = req.body;
+    const { name, groupDescription } = req.body;
     const group = await Group.findById(req.params.groupId);
 
     if (!group) return res.status(404).json({ message: "Group not found" });
@@ -93,7 +93,7 @@ const updateGroup = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
 
     group.name = name || group.name;
-    group.groupDescription = group_description || group.name;
+    group.groupDescription = groupDescription || group.groupDescription;
     await group.save();
 
     res.json({ message: "Group updated successfully" });
@@ -120,22 +120,26 @@ const deleteGroup = async (req, res) => {
 const addMember = async (req, res) => {
   try {
     const group = await Group.findById(req.params.groupId);
-    if (!group) return res.status(404).json({ message: "Group not found" });
+    if (!group)
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
 
     if (!group.members.includes(req.body.user_id)) {
       group.members.push(req.body.user_id);
       await group.save();
     } else {
-      return res
-        .status(403)
-        .json({ message: "This user is already added in this group" });
+      return res.status(403).json({
+        success: false,
+        message: "This user is already added in this group",
+      });
     }
 
-    res.json(group);
+    res.json({ success: true, message: "member added successfully" });
   } catch (error) {
     console.log(error);
 
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -237,5 +241,5 @@ module.exports = {
   removeMember,
   getGroupList,
   updateProfileImage,
-  removeProfileImage
+  removeProfileImage,
 };

@@ -78,7 +78,6 @@ const Home = () => {
       const responseData = response.data;
       const ids = responseData.data.map((user) => user._id);
       setFriends(ids);
-      console.log("friends", responseData);
     } catch (error) {
       console.log(error);
     }

@@ -18,7 +18,6 @@ const Sidebar = () => {
   const logoutController = useRef(null);
   const { token } = useSelector((state) => state.auth);
   const { user } = useSelector((state) => state.profile);
-  console.log("user", user);
 
   const dispatch = useDispatch();
 
