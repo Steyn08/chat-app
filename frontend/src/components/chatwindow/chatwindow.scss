@@ -7,6 +7,9 @@
   .chats-list {
     max-height: 100%;
     overflow: auto;
+    min-width: 450px;
+    max-width: 450px;
+    height: 100vh;
     // &::-webkit-scrollbar {
     //   display: none;
     // }
@@ -42,6 +45,11 @@
     }
   }
 }
+
+.chat-content {
+  flex-grow: 1;
+}
+
 
 .chat-view {
   display: flex;
@@ -282,7 +290,7 @@
   .info-header {
     position: sticky;
     top: 0;
-    background-color:$secondary-color ;
+    background-color: $secondary-color;
     z-index: 999;
   }
 

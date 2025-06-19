@@ -39,7 +39,7 @@ router.get("/:groupId", getGroup);
 router.put("/:groupId", upload.none(), updateGroup);
 router.delete("/:groupId", deleteGroup);
 router.post("/:groupId/add-members", addMember);
-router.delete("/:groupId/remove-members/:userId", removeMember);
+router.delete("/:groupId/remove-member/:userId", removeMember);
 router.post(
   "/update-profile-image/:groupId",
   upload.single("profile_image"),

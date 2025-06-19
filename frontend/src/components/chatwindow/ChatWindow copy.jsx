@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPaperclip,
   faPaperPlane,
+  faDownload,
   faEye,
   faAddressBook,
   faCheck,
@@ -16,7 +17,7 @@ import GroupList from "../groups/GroupList";
 import PeopleList from "../peoples/PeopleList";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
-import socket from "../../socket";
+import { io } from "socket.io-client";
 import { setAuth } from "../../slices/authSlice";
 import { useNavigate } from "react-router-dom";
 import "react-image-lightbox/style.css";
@@ -25,19 +26,25 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import FilePreviewCard from "../FilePreviewCard";
 import { Camera } from "lucide-react";
-import MessagesList from "../MessagesList";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 const ChatWindow = () => {
+  const socket = io(API_BASE_URL);
   const { token } = useSelector((state) => state.auth);
   const user = useSelector((state) => state.profile.user);
 
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const messagesEndRef = useRef(null);
+  const getMessageRef = useRef(null);
+  const getFriendsMessageRef = useRef(null);
   const [attachments, setAttachments] = useState([]);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [showAttachmentPopup, setShowAttachmentPopup] = useState(false);
   const [viewerImage, setViewerImage] = useState("");
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [isChatUserOnline, setIsChatUserOnline] = useState(false);
   const [messageLoading, setMessageLoading] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -45,18 +52,12 @@ const ChatWindow = () => {
   const [showOptions, setShowOptions] = useState(false);
   const [friendsList, setFriendsList] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [groupData, setGroupData] = useState([]);
-  const messagesEndRef = useRef(null);
-  const groupMessagesRef = useRef(null);
-  const getFriendsMessageRef = useRef(null);
   const uploadImageRef = useRef(null);
   const updateProfileRef = useRef(null);
   const deleteProfileRef = useRef(null);
   const updateDetailsRef = useRef(null);
   const addMemberRef = useRef(null);
-  const removeMemberRef = useRef(null);
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+  const [groupData, setGroupData] = useState([]);
   const toggleInfoPanel = () => {
     setShowInfoPanel((prev) => !prev);
   };
@@ -92,15 +93,15 @@ const ChatWindow = () => {
       hour12: true,
     });
 
+  const openImage = (imageUrl) => {
+    setViewerImage(imageUrl);
+    setViewerOpen(true);
+  };
+
   const fetchGroupMessages = async (groupId) => {
     try {
       setMessageLoading(true);
-
-      if (groupMessagesRef.current) {
-        groupMessagesRef.current.abort();
-      }
-
-      groupMessagesRef.current = new AbortController();
+      getMessageRef.current = new AbortController();
 
       const config = {
         headers: {
@@ -108,7 +109,7 @@ const ChatWindow = () => {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
-        signal: groupMessagesRef.current.signal,
+        signal: getMessageRef.current.signal,
       };
 
       const response = await axios.get(
@@ -192,12 +193,7 @@ const ChatWindow = () => {
       const responseData = response.data;
 
       if (responseData.success) {
-        // window.location.reload();
-        setGroupData((prev) => ({
-          ...prev,
-          name: responseData.updatedGroup.name,
-          groupDescription: responseData.updatedGroup.groupDescription,
-        }));
+        window.location.reload();
       } else {
         if (responseData.logout) {
           dispatch(
@@ -260,15 +256,10 @@ const ChatWindow = () => {
     }
   };
 
-  useEffect(() => {
-    if (user?._id) {
-      socket.connect();
-      socket.emit("register", user._id);
-    }
-    return () => {
-      socket.disconnect();
-    };
-  }, [user]);
+  const getFileExtension = (url) => {
+    const extension = url.split(".").pop().toLowerCase();
+    return extension;
+  };
 
   useEffect(() => {
     if (user?._id) {
@@ -456,67 +447,9 @@ const ChatWindow = () => {
       );
 
       const responseData = response.data;
-      console.log(responseData);
 
       if (responseData.success) {
-        setGroupData((prev) => ({
-          ...prev,
-          members: [...prev.members, responseData.newMember],
-        }));
-      } else {
-        if (responseData.logout) {
-          dispatch(
-            setAuth({
-              login: false,
-              token: null,
-            })
-          );
-          navigate("/sign-in");
-        }
-      }
-
-      setShowAddMemberModal(false);
-    } catch (e) {
-      console.log(e);
-      if (e.response?.status === 401) {
-        dispatch(setAuth({ login: false, token: null }));
-        navigate("/sign-in");
-      }
-    }
-  };
-
-  const handelRemoveMember = async (friendId, groupId) => {
-    const confirm = window.confirm(
-      "Are you sure you want to remove this member?"
-    );
-    if (!confirm) return;
-    try {
-      removeMemberRef.current = new AbortController();
-
-      const config = {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        signal: removeMemberRef.current.signal,
-      };
-
-      // const formData = new FormData();
-      // formData.append("user_id", friendId);
-      const response = await axios.delete(
-        `${API_BASE_URL}/groups/${groupId}/remove-member/${friendId}`,
-        // formData,
-        config
-      );
-
-      const responseData = response.data;
-
-      if (responseData.success) {
-        setGroupData((prev) => ({
-          ...prev,
-          members: prev.members.filter((m) => m._id !== friendId),
-        }));
+        window.location.reload();
       } else {
         if (responseData.logout) {
           dispatch(
@@ -536,11 +469,16 @@ const ChatWindow = () => {
       }
     }
   };
+
+  let lastDate = null;
 
   return (
     <>
       <div className="d-flex chats-block gap-2 w-100 mx-2">
-        <div className="d-flex flex-column gap-4 justify-content-between chats-list">
+        <div
+          className="d-flex flex-column gap-4 justify-content-between chats-list"
+          style={{ minWidth: "450px", maxWidth: "450px", height: "100vh" }}
+        >
           {/* <input
           type="search"
           placeholder="Search..."
@@ -567,7 +505,7 @@ const ChatWindow = () => {
         </div>
 
         {selectedChat?.type === "group" && (
-          <div className="h-100 chat-content">
+          <div className="h-100" style={{ flexGrow: "1" }}>
             <div className="chat-view rounded d-flex flex-column justify-content-between">
               <div className="profile-details d-flex justify-content-between p-3">
                 <div className="status d-flex align-items-center">
@@ -625,18 +563,99 @@ const ChatWindow = () => {
               ) : (
                 <>
                   <div className="messages-block p-3">
-                    <MessagesList
-                      messages={messages}
-                      userId={user._id}
-                      API_BASE_URL={API_BASE_URL}
-                      formatDateSeparator={formatDateSeparator}
-                      formatMessageTime={formatMessageTime}
-                      viewerImage={viewerImage}
-                      setViewerImage={setViewerImage}
-                      viewerOpen={viewerOpen}
-                      setViewerOpen={setViewerOpen}
-                      isGroupChat={true}
-                    />
+                    {messages.length > 0 &&
+                      messages.map((msg) => {
+                        const currentDate = new Date(
+                          msg.timestamp
+                        ).toDateString();
+                        const showDateSeparator = lastDate !== currentDate;
+                        lastDate = currentDate;
+                        const isOwnMessage =
+                          (msg?.sender?._id || msg?.sender) === user._id;
+                        const senderName = msg?.sender?.username || "Unknown";
+
+                        return (
+                          <>
+                            {showDateSeparator && (
+                              <div className="date-separator text-center my-3">
+                                <span>
+                                  {formatDateSeparator(msg.timestamp)}
+                                </span>
+                              </div>
+                            )}
+                            <div
+                              key={msg?._id}
+                              className={`message-container ${
+                                isOwnMessage ? "own" : "other"
+                              }`}
+                            >
+                              <div className="message-bubble">
+                                {!isOwnMessage && (
+                                  <small className="sender-name d-block text-muted p-0 m-0">
+                                    {senderName}
+                                  </small>
+                                )}
+
+                                {msg.text && (
+                                  <div className="w-100 d-flex msg-block">
+                                    <span className="message-text badge text-wrap">
+                                      {msg.text}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {msg.attachments &&
+                                  msg.attachments.map((file, idx) => {
+                                    const fullUrl = `${API_BASE_URL}/${file}`;
+                                    const fileExtension =
+                                      getFileExtension(fullUrl);
+                                    const fileName = file.split("/").pop();
+
+                                    const isImage = [
+                                      "jpg",
+                                      "jpeg",
+                                      "png",
+                                      "gif",
+                                      "bmp",
+                                    ].includes(fileExtension);
+
+                                    return isImage ? (
+                                      <div
+                                        key={idx}
+                                        className="image-preview-wrapper"
+                                      >
+                                        <img
+                                          src={fullUrl}
+                                          alt={fileName}
+                                          onClick={() => openImage(fullUrl)}
+                                          className="image-thumbnail"
+                                        />
+                                        <a
+                                          href={fullUrl}
+                                          download
+                                          className="download-button"
+                                        >
+                                          <FontAwesomeIcon icon={faDownload} />
+                                        </a>
+                                      </div>
+                                    ) : (
+                                      <FilePreviewCard
+                                        key={idx}
+                                        fullUrl={fullUrl}
+                                        fileName={fileName}
+                                        fileExtension={fileExtension}
+                                      />
+                                    );
+                                  })}
+
+                                <small className="message-time d-block text-end text-muted p-0 m-0">
+                                  {formatMessageTime(msg.timestamp)}
+                                </small>
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })}
 
                     <div ref={messagesEndRef} />
                     {viewerOpen && (
@@ -706,7 +725,7 @@ const ChatWindow = () => {
         )}
 
         {selectedChat?.type === "person" && (
-          <div className="h-100 chat-content">
+          <div className="h-100" style={{ flexGrow: "1" }}>
             <div className="chat-view rounded d-flex flex-column justify-content-between">
               <div className="profile-details d-flex justify-content-between p-3">
                 <div className="status d-flex align-items-center">
@@ -764,19 +783,91 @@ const ChatWindow = () => {
               ) : (
                 <>
                   <div className="messages-block p-3">
-                    <MessagesList
-                      messages={messages}
-                      userId={user._id}
-                      API_BASE_URL={API_BASE_URL}
-                      formatDateSeparator={formatDateSeparator}
-                      formatMessageTime={formatMessageTime}
-                      viewerImage={viewerImage}
-                      setViewerImage={setViewerImage}
-                      viewerOpen={viewerOpen}
-                      setViewerOpen={setViewerOpen}
-                      isGroupChat={false}
-                    />
+                    {messages.length > 0 &&
+                      messages.map((msg) => {
+                        const currentDate = new Date(
+                          msg.timestamp
+                        ).toDateString();
+                        const showDateSeparator = lastDate !== currentDate;
+                        lastDate = currentDate;
+                        const isOwnMessage =
+                          (msg?.sender?._id || msg?.sender) === user._id;
 
+                        return (
+                          <>
+                            {showDateSeparator && (
+                              <div className="date-separator text-center my-3">
+                                <span>
+                                  {formatDateSeparator(msg.timestamp)}
+                                </span>
+                              </div>
+                            )}
+                            <div
+                              key={msg?._id}
+                              className={`message-container ${
+                                isOwnMessage ? "own" : "other"
+                              }`}
+                            >
+                              <div className="message-bubble">
+                                {msg.text && (
+                                  <div className="w-100 d-flex msg-block">
+                                    <span className="message-text badge text-wrap">
+                                      {msg.text}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {msg.attachments &&
+                                  msg.attachments.map((file, idx) => {
+                                    const fullUrl = `${API_BASE_URL}/${file}`;
+                                    const fileExtension =
+                                      getFileExtension(fullUrl); // returns 'pdf', 'docx', etc.
+                                    const fileName = file.split("/").pop();
+
+                                    const isImage = [
+                                      "jpg",
+                                      "jpeg",
+                                      "png",
+                                      "gif",
+                                      "bmp",
+                                    ].includes(fileExtension);
+
+                                    return isImage ? (
+                                      <div
+                                        key={idx}
+                                        className="image-preview-wrapper"
+                                      >
+                                        <img
+                                          src={fullUrl}
+                                          alt={fileName}
+                                          onClick={() => openImage(fullUrl)}
+                                          className="image-thumbnail"
+                                        />
+                                        <a
+                                          href={fullUrl}
+                                          download
+                                          className="download-button"
+                                        >
+                                          <FontAwesomeIcon icon={faDownload} />
+                                        </a>
+                                      </div>
+                                    ) : (
+                                      <FilePreviewCard
+                                        key={idx}
+                                        fullUrl={fullUrl}
+                                        fileName={fileName}
+                                        fileExtension={fileExtension}
+                                      />
+                                    );
+                                  })}
+                                <small className="message-time d-block text-end text-muted p-0 m-0">
+                                  {formatMessageTime(msg.timestamp)}
+                                </small>
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })}
                     <div ref={messagesEndRef} />
                     {viewerOpen && (
                       <Lightbox
@@ -1132,7 +1223,7 @@ const ChatWindow = () => {
                               onError={(e) =>
                                 (e.target.src = "/assets/icons/profile.jpg")
                               }
-                              alt={member?.name}
+                              alt={member.name}
                               className="people-avatar"
                             />
                             <span>
@@ -1141,25 +1232,13 @@ const ChatWindow = () => {
                                 : member?.username}
                             </span>
                           </div>
-                          {groupData?.admin == member?._id ? (
+                          {groupData?.admin == member?._id && (
                             <small
                               className="text-white bg-secondary rounded p-1"
                               style={{ fontSize: "10px" }}
                             >
                               Group admin
                             </small>
-                          ) : (
-                            user?._id == groupData?.admin && (
-                              <a
-                                className="text-danger text-decoration-none"
-                                style={{ cursor: "pointer" }}
-                                onClick={() =>
-                                  handelRemoveMember(member?._id, groupData._id)
-                                }
-                              >
-                                remove
-                              </a>
-                            )
                           )}
                         </div>
                       );
@@ -1191,12 +1270,12 @@ const ChatWindow = () => {
                   ?.filter(
                     (friend) =>
                       !groupData?.members?.some(
-                        (member) => member?._id === friend?._id
+                        (member) => member._id === friend._id
                       )
                   )
                   .map((friend) => (
                     <div
-                      key={friend?._id}
+                      key={friend._id}
                       className="d-flex justify-content-between align-items-center border-bottom py-1"
                     >
                       <div>
@@ -1206,15 +1285,15 @@ const ChatWindow = () => {
                               ? `${API_BASE_URL}/${friend.profileImage}`
                               : "/assets/icons/profile.jpg"
                           }
-                          alt={friend?.name}
+                          alt={friend.name}
                           className="people-avatar"
                         />
-                        <span>{friend?.name}</span>
+                        <span>{friend.name}</span>
                       </div>
                       <button
                         className="btn btn-success btn-sm"
                         onClick={() =>
-                          handleAddMember(friend?._id, groupData?._id)
+                          handleAddMember(friend._id, groupData?._id)
                         }
                       >
                         Add

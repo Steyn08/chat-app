@@ -135,7 +135,13 @@ const addMember = async (req, res) => {
       });
     }
 
-    res.json({ success: true, message: "member added successfully" });
+    let newMember = await User.findOne({ _id: req.body.user_id });
+
+    res.json({
+      success: true,
+      message: "member added successfully",
+      newMember,
+    });
   } catch (error) {
     console.log(error);
 
@@ -155,10 +161,10 @@ const removeMember = async (req, res) => {
     );
     await group.save();
 
-    res.json({ group, message: "User removed successfully" });
+    res.json({ success: true, group, message: "User removed successfully" });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
