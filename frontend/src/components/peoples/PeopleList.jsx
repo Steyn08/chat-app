@@ -6,63 +6,12 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { setAuth } from "../../slices/authSlice";
 
-// const peoples = [
-//   {
-//     id: 1,
-//     name: "Friends Forever",
-//     message: "Hahahaha!!",
-//     time: "Today, 3:52pm",
-//     unreadCount: 4,
-//     image: "/assets/icons/profile.jpg",
-//   },
-//   {
-//     id: 2,
-//     name: "Mera Gang",
-//     message: "Kyu.....???",
-//     time: "Yesterday, 7:31am",
-//     unreadCount: 0,
-//     image: "/assets/icons/profile.jpg",
-//   },
-//   {
-//     id: 3,
-//     name: "Hiking",
-//     message: "It’s not going to happen",
-//     time: "Wednesday, 9:12am",
-//     unreadCount: 0,
-//     image: "/assets/icons/profile.jpg",
-//   },
-//   {
-//     id: 4,
-//     name: "Hiking",
-//     message: "It’s not going to happen",
-//     time: "Wednesday, 9:12am",
-//     unreadCount: 0,
-//     image: "/assets/icons/profile.jpg",
-//   },
-//   {
-//     id: 5,
-//     name: "Hiking",
-//     message: "It’s not going to happen",
-//     time: "Wednesday, 9:12am",
-//     unreadCount: 0,
-//     image: "/assets/icons/profile.jpg",
-//   },
-//   {
-//     id: 6,
-//     name: "Hiking",
-//     message: "It’s not going to happen",
-//     time: "Wednesday, 9:12am",
-//     unreadCount: 0,
-//     image: "/assets/icons/profile.jpg",
-//   },
-// ];
-
 const formatDateTime = (isoString) => {
   return moment(isoString).format("dddd, h:mma");
 };
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
-const PeopleList = ({setFriendsList, onSelect }) => {
+const PeopleList = ({ onSelect, searchFriend }) => {
   const dispatch = useDispatch();
   const [peoples, setPeoples] = useState([]);
   const getPeoplesRef = useRef(null);
@@ -86,22 +35,15 @@ const PeopleList = ({setFriendsList, onSelect }) => {
       };
 
       const response = await axios.get(`${API_BASE_URL}/friends/list`, config);
-
       const responseData = response.data;
 
       if (responseData.success) {
         if (responseData.data) {
-          setFriendsList(responseData.data);
           setPeoples(responseData.data);
         }
       } else {
         if (responseData.logout) {
-          dispatch(
-            setAuth({
-              login: false,
-              token: null,
-            })
-          );
+          dispatch(setAuth({ login: false, token: null }));
           navigate("/sign-in");
         }
       }
@@ -120,6 +62,10 @@ const PeopleList = ({setFriendsList, onSelect }) => {
     getPeoples();
   }, [getPeoples, token]);
 
+  const filteredPeople = peoples.filter((p) =>
+    p.name?.toLowerCase().includes(searchFriend?.toLowerCase() || "")
+  );
+
   if (loading) {
     return (
       <div className="group-list d-flex justify-content-center align-items-center">
@@ -128,16 +74,17 @@ const PeopleList = ({setFriendsList, onSelect }) => {
     );
   }
 
-  if (peoples.length === 0) {
+  if (filteredPeople.length === 0) {
     return (
       <div className="group-list d-flex justify-content-center align-items-center">
-        <span>No Friends to list</span>
+        <span>No Friends Found</span>
       </div>
     );
   }
+
   return (
     <div className="people-list">
-      {peoples.map((people) => (
+      {filteredPeople.map((people) => (
         <div
           key={people._id}
           onClick={() => onSelect && onSelect(people)}
@@ -155,19 +102,36 @@ const PeopleList = ({setFriendsList, onSelect }) => {
           />
           <div className="people-info">
             <div className="people-header d-flex justify-content-between">
-              <span className="people-name">{people.name}</span>
+              <span
+                className="people-name"
+                style={{
+                  textOverflow: "ellipsis",
+                  overflow: "hidden",
+                  maxWidth: "95px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {people.name}
+              </span>
               {people.lastMessageTime && (
-                <span className="people-time">
+                <span className="people-time opacity-50 text-white fw-bold">
                   {formatDateTime(people.lastMessageTime || 0)}
                 </span>
               )}
             </div>
             <div className="people-message d-flex justify-content-between">
-              <span>
+              <span
+                className="opacity-50 text-white fw-bold"
+                style={{
+                  textOverflow: "ellipsis",
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {people?.lastMessage ||
-                  (people?.lastAttachment[people?.lastAttachment.length - 1]
-                    ? people?.lastAttachment[people?.lastAttachment.length - 1]
-                        .split("/")
+                  (people?.lastAttachment?.length > 0
+                    ? people.lastAttachment[people.lastAttachment.length - 1]
+                        ?.split("/")
                         .pop()
                     : "")}
               </span>

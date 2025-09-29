@@ -8,7 +8,7 @@ const createGroup = async (req, res) => {
   try {
     const { name, members, group_description } = req.body;
     const admin = req.user.userId;
-
+    
     const group = new Group({
       name,
       admin,
@@ -26,7 +26,7 @@ const createGroup = async (req, res) => {
   }
 };
 
-const getGroup = async (req, res) => {
+const getGroup = async (req, res) => {  
   try {
     const group = await Group.findById(req.params.groupId).populate(
       "members",

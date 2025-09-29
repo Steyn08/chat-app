@@ -1,7 +1,8 @@
 // App.jsx
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import ChatWindow from "./components/chatwindow/ChatWindow";
-import Home from "./components/home/Home";
+// import ChatWindow from "./components/chatwindow/ChatWindow";
+import "./components/chatwindow/chatwindow.scss";
+
 import Login from "./components/auth/Login";
 import PrivateRoute from "./routes/PrivateRoute.jsx";
 import Register from "./components/auth/Register.jsx";
@@ -10,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { setAuth } from "./slices/authSlice.jsx";
 import { setUser } from "./slices/profileSlice.jsx";
-import Profile from "./components/profile/Profile.jsx";
+import ChatApp from "./ChatApp.jsx";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
@@ -67,23 +68,12 @@ function App() {
     }
   }, [getProfile, token, location.pathname]);
 
-  // useEffect(() => {
-  //   getProfile().then((data) => {
-  //     // if (data["user"]) {
-  //     //   dispatch(setUser(data["user"] ?? []));
-  //     // }
-  //     // setLoading(false);
-  //   });
-  // }, [getProfile]);
-
   return (
     <Routes>
       <Route path="/sign-in" element={<Login />} />
       <Route path="/sign-up" element={<Register />} />
       <Route path="" element={<PrivateRoute />}>
-        <Route path="/" element={<Home />} />
-        <Route path="chats" element={<ChatWindow />} />
-        <Route path="profile" element={<Profile />} />
+      <Route path="/" element={<ChatApp />} />
       </Route>
     </Routes>
   );

@@ -1,0 +1,49 @@
+.chat-ui-wrapper {
+  height: 100vh;
+  display: flex;
+
+  .sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease-in-out;
+
+    // Tablet & below
+    @media (max-width: 768px) {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%; // full width
+      height: 100%;
+      z-index: 1050;
+      background-color: #3f51b5;
+      transform: translateX(-100%); // hidden by default
+
+      &.open {
+        transform: translateX(0); // slide in
+      }
+    }
+  }
+
+  .chat-area {
+    flex: 1;
+    overflow: hidden;
+
+    .overflow-auto {
+      overflow-y: auto;
+    }
+  }
+
+  .group-list {
+    flex-grow: 1;
+    overflow-y: auto;
+  }
+}
+
+.custom-swal-popup {
+  z-index: 2000 !important;
+}
+.swal2-container {
+  z-index: 2000 !important;
+}

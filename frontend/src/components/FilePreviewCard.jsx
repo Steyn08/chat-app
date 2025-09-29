@@ -42,11 +42,11 @@ const FilePreviewCard = ({
           .{fileExtension.toUpperCase()} • {fileSize}
         </div>
       </div>
-      <div className="download-btn">
+      {/* <div className="download-btn">
         <a href={fullUrl} download>
           <FontAwesomeIcon icon={faDownload} />
         </a>
-      </div>
+      </div> */}
     </div>
   );
 };
